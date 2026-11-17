@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MPI Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F6FA; --ink:#0E1117; --ink2:#3A4150; --muted:#8C95A6; --faint:#CDD2DB;
+  --line:rgba(14,17,23,.08); --line2:rgba(14,17,23,.16);
+  --glass:rgba(255,255,255,.52); --glass2:rgba(255,255,255,.82); --gb:rgba(255,255,255,.85); --ghi:rgba(255,255,255,.9);
+  --shadow:0 24px 60px -28px rgba(70,86,118,.45), 0 2px 8px -4px rgba(70,86,118,.12);
+  --fogA:#EEF1F6; --fogB:#A9B4C6;
+  --blob1:#D9E0EB; --blob2:#BCC6D6; --blob3:#F6F7FA;
+  --code:rgba(14,17,23,.035); --seg:rgba(14,17,23,.05);
+  --node:#FFFFFF; --pill:rgba(255,255,255,.92);
+  --ok:#3F8566; --okbg:rgba(63,133,102,.10); --bad:#B5564E; --badbg:rgba(181,86,78,.09);
+  --kw:#5A58C8; --fn:#2D6F8E; --str:#A0573A; --num:#A5701C; --com:#9AA3B3; --pp:#7A5AA8;
+  --spring:cubic-bezier(.34,1.4,.64,1); --smooth:cubic-bezier(.2,.8,.2,1);
+}
+[data-theme="dark"]{
+  --bg:#0B0E13; --ink:#E9EDF4; --ink2:#B4BCC9; --muted:#7C8698; --faint:#2F3646;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.16);
+  --glass:rgba(22,27,37,.5); --glass2:rgba(30,37,50,.85); --gb:rgba(255,255,255,.08); --ghi:rgba(255,255,255,.07);
+  --shadow:0 30px 70px -30px rgba(0,0,0,.7), 0 2px 8px -4px rgba(0,0,0,.4);
+  --fogA:#2C3445; --fogB:#10141C;
+  --blob1:#1B2331; --blob2:#212A3B; --blob3:#121722;
+  --code:rgba(255,255,255,.035); --seg:rgba(255,255,255,.06);
+  --node:#1A2130; --pill:rgba(24,30,42,.92);
+  --ok:#6FC09A; --okbg:rgba(111,192,154,.10); --bad:#E58A80; --badbg:rgba(229,138,128,.10);
+  --kw:#A9AEFF; --fn:#86C5E0; --str:#E3A483; --num:#E3C17D; --com:#5E697C; --pp:#C3A6F0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden;transition:background-color .6s,color .6s;font-size:16px;line-height:1.5}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--fogB);color:#0E1117}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
+/* background */
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.bw{position:absolute;transition:transform 1.4s var(--smooth)}
+.blob{width:100%;height:100%;border-radius:50%;filter:blur(70px);animation:drift 30s ease-in-out infinite alternate}
+.w1{width:60vmax;height:60vmax;top:-24vmax;left:-14vmax;transform:translate(calc(var(--mx,0)*-26px),calc(var(--my,0)*-26px))}
+.w2{width:58vmax;height:58vmax;bottom:-28vmax;right:-18vmax;transform:translate(calc(var(--mx,0)*30px),calc(var(--my,0)*30px))}
+.w3{width:38vmax;height:38vmax;top:28%;left:38%;transform:translate(calc(var(--mx,0)*18px),calc(var(--my,0)*-18px))}
+.w1 .blob{background:radial-gradient(circle at 35% 35%,var(--blob1),transparent 68%)}
+.w2 .blob{background:radial-gradient(circle at 50% 50%,var(--blob2),transparent 66%);animation-duration:36s}
+.w3 .blob{background:radial-gradient(circle at 50% 50%,var(--blob3),transparent 66%);animation-duration:42s}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(6%,4%) scale(1.08)}100%{transform:translate(-4%,7%) scale(.96)}}
+.grain{position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+
+/* glass */
+.glass{background:var(--glass);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border:1px solid var(--gb);border-radius:28px;box-shadow:var(--shadow),inset 0 1px 0 var(--ghi);position:relative;transition:background-color .6s,border-color .6s,box-shadow .6s}
+.glass.lift::after,.btn::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .5s;background:radial-gradient(420px circle at var(--sx,50%) var(--sy,0%),rgba(255,255,255,.38),transparent 45%)}
+[data-theme="dark"] .glass.lift::after,[data-theme="dark"] .btn::after{background:radial-gradient(420px circle at var(--sx,50%) var(--sy,0%),rgba(255,255,255,.07),transparent 45%)}
+.glass.lift:hover::after,.btn:hover::after{opacity:1}
+
+/* nav */
+.nav{position:fixed;top:16px;left:50%;transform:translateX(-50%);width:min(1200px,calc(100% - 32px));z-index:50;display:flex;align-items:center;gap:16px;padding:10px 10px 10px 22px;border-radius:24px}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Inter Tight",Inter,system-ui,sans-serif;font-weight:700;font-size:18px;letter-spacing:-.02em;white-space:nowrap}
+.sphere{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#fff 0%,#E3E8F0 35%,#A9B4C6 100%);box-shadow:0 2px 6px rgba(80,95,125,.35);flex:none}
+.links{position:relative;display:flex;gap:2px;margin:0 auto;padding:4px;border-radius:999px;background:var(--seg)}
+.links a{position:relative;z-index:1;padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:var(--muted);transition:color .4s;white-space:nowrap}
+.links a.on,.links a:hover{color:var(--ink)}
+.ind{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--glass2);box-shadow:0 6px 18px -8px rgba(60,75,105,.45),inset 0 1px 0 var(--ghi);transition:left .55s var(--spring),width .55s var(--spring),opacity .3s}
+.tools{display:flex;align-items:center;gap:8px}
+.seg{position:relative;display:inline-flex;padding:4px;border-radius:999px;background:var(--seg)}
+.seg button{position:relative;z-index:1;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);transition:color .4s;letter-spacing:.02em}
+.seg button.on{color:var(--ink)}
+.seg .thumb{position:absolute;top:4px;bottom:4px;left:4px;border-radius:999px;background:var(--glass2);box-shadow:0 6px 16px -8px rgba(60,75,105,.5),inset 0 1px 0 var(--ghi);transition:left .55s var(--spring),width .55s var(--spring)}
+.icon-btn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--seg);transition:transform .5s var(--spring),background-color .4s}
+.icon-btn:hover{transform:rotate(-14deg) scale(1.06)}
+.icon-btn svg{width:19px;height:19px}
+.i-sun,.i-moon{transition:transform .6s var(--spring),opacity .4s;position:absolute}
+.icon-btn{position:relative}
+[data-theme="light"] .i-sun{opacity:0;transform:rotate(-90deg) scale(.5)}
+[data-theme="dark"] .i-moon{opacity:0;transform:rotate(90deg) scale(.5)}
+
+/* layout */
+main{transition:opacity .22s,filter .22s}
+body.swap main{opacity:0;filter:blur(6px)}
+.wrap{width:min(1200px,calc(100% - 32px));margin:0 auto;padding:128px 0 40px}
+.view{display:none}
+.view.on{display:block;animation:viewIn .8s var(--smooth)}
+@keyframes viewIn{from{opacity:0;transform:translateY(18px);filter:blur(10px)}to{opacity:1;transform:none;filter:blur(0)}}
+.eyebrow{font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1,h2,h3{font-family:"Inter Tight",Inter,sans-serif;letter-spacing:-.035em;line-height:1.05}
+.h2{font-size:clamp(32px,4.4vw,52px);font-weight:700;margin:10px 0 14px}
+.sub{color:var(--ink2);font-size:17px;max-width:640px;line-height:1.6}
+.sec-head{margin:0 0 28px}
+
+/* buttons */
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:999px;font-weight:600;font-size:15px;transition:transform .5s var(--spring),background-color .4s,box-shadow .5s}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:var(--ink);color:var(--bg);box-shadow:0 14px 30px -14px rgba(14,17,23,.55)}
+.btn.sec{background:var(--glass2);border:1px solid var(--gb);box-shadow:inset 0 1px 0 var(--ghi)}
+.btn svg{width:16px;height:16px;transition:transform .5s var(--spring)}
+.btn:hover svg.arr{transform:translateX(3px)}
+.btn.sm{padding:10px 16px;font-size:14px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:48px;align-items:end;margin-bottom:40px}
+.words{position:relative;padding-left:44px}
+.words div{font-family:"Inter Tight",Inter,system-ui,sans-serif;font-weight:700;font-size:clamp(46px,6.6vw,92px);letter-spacing:-.05em;line-height:1;color:var(--faint);transition:color .9s var(--smooth)}
+.words div.on{color:var(--ink)}
+.words .sphere{position:absolute;left:0;top:0;width:26px;height:26px;transition:transform .9s var(--spring)}
+.hero-copy h1{font-size:clamp(30px,3.4vw,44px);font-weight:700;margin:12px 0 16px}
+.hero-copy .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+.fogcard{position:relative;border-radius:36px;overflow:hidden;background:radial-gradient(120% 110% at 28% 30%,var(--fogA) 0%,var(--fogA) 18%,var(--fogB) 100%);box-shadow:0 40px 80px -40px rgba(70,86,118,.6),inset 0 1px 0 rgba(255,255,255,.6);transition:background .8s}
+.fogcard::before{content:"";position:absolute;inset:-20%;background:radial-gradient(40% 40% at 50% 50%,rgba(255,255,255,.45),transparent 70%);animation:sheen 16s ease-in-out infinite alternate;pointer-events:none}
+[data-theme="dark"] .fogcard::before{background:radial-gradient(40% 40% at 50% 50%,rgba(169,180,198,.12),transparent 70%)}
+@keyframes sheen{from{transform:translate(-18%,-10%)}to{transform:translate(20%,14%)}}
+.fogcard svg{display:block;width:100%;height:auto;position:relative}
+.chip{position:absolute;display:inline-flex;align-items:center;gap:10px;padding:11px 18px 11px 14px;border-radius:999px;background:rgba(255,255,255,.62);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.8);box-shadow:0 10px 24px -14px rgba(60,75,105,.6);font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:14px;font-weight:500;color:#0E1117;transition:all .6s var(--spring)}
+[data-theme="dark"] .chip{background:rgba(30,37,50,.7);border-color:rgba(255,255,255,.1);color:var(--ink)}
+.chip .d{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.9);background:#A9B4C6;box-shadow:0 0 0 1px rgba(14,17,23,.06)}
+.chip.l .d{background:#EEF1F6}
+.chip.bl{left:22px;bottom:22px}.chip.br{right:22px;bottom:22px}
+.chip.tr{right:22px;top:22px;font-family:Inter,system-ui,sans-serif;font-size:13px;color:#5A6478;background:rgba(255,255,255,.4)}
+[data-theme="dark"] .chip.tr{color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:28px 0 72px}
+.stat{padding:24px 26px;border-radius:24px}
+.stat b{display:block;font-family:"Inter Tight",Inter,system-ui,sans-serif;font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:1}
+.stat span{color:var(--muted);font-size:14px}
+.feats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:72px}
+.feat{padding:26px;border-radius:28px;display:flex;flex-direction:column;gap:12px;min-height:250px;transition:transform .6s var(--spring),background-color .6s}
+.feat:hover{transform:translateY(-6px)}
+.feat .ic{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:var(--seg)}
+.feat .ic svg{width:22px;height:22px}
+.feat h3{font-size:22px;font-weight:600;margin-top:8px}
+.feat p{color:var(--ink2);font-size:15px;line-height:1.55;flex:1}
+.feat .go{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.feat .go svg{width:16px;height:16px;transition:transform .5s var(--spring)}
+.feat:hover .go svg{transform:translateX(4px)}
+.feat.star{background:linear-gradient(160deg,var(--glass2),var(--glass))}
+.feat .tag{align-self:flex-start;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:var(--ink);color:var(--bg)}
+.prog{display:grid;grid-template-columns:1.1fr 2fr;gap:24px;padding:34px;border-radius:32px;align-items:center}
+.rings{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ring{display:flex;align-items:center;gap:16px}
+.ring svg{width:84px;height:84px;flex:none;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:7;stroke-linecap:round}
+.ring .tr{stroke:var(--line)}
+.ring .fg{stroke:url(#rg);transition:stroke-dashoffset 1.4s var(--smooth)}
+.ring b{display:block;font-family:"Inter Tight",Inter,system-ui,sans-serif;font-size:24px;letter-spacing:-.03em}
+.ring span{font-size:13px;color:var(--muted);line-height:1.35;display:block}
+
+/* theory */
+.th{display:grid;grid-template-columns:290px minmax(0,1fr);gap:24px;align-items:start}
+.mods{position:sticky;top:110px;padding:10px;border-radius:26px;display:flex;flex-direction:column;gap:2px}
+.mods button{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:16px;font-size:14px;font-weight:500;color:var(--ink2);transition:background-color .4s,color .4s,transform .5s var(--spring)}
+.mods button:hover{background:var(--seg);transform:translateX(3px)}
+.mods button.on{background:var(--glass2);color:var(--ink);box-shadow:0 8px 20px -12px rgba(60,75,105,.45),inset 0 1px 0 var(--ghi)}
+.mods .n{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--muted);width:20px;flex:none}
+.mods .t{flex:1;line-height:1.3}
+.mods .ck{width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;border:1.5px solid var(--line2);transition:all .5s var(--spring)}
+.mods .ck.done{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.mods .ck svg{width:11px;height:11px;opacity:0;transition:opacity .3s}
+.mods .ck.done svg{opacity:1}
+.art{padding:48px 52px;border-radius:32px}
+.art h2{font-size:clamp(30px,3.6vw,44px);font-weight:700;margin:10px 0 14px}
+.art .lead{font-size:19px;color:var(--ink);line-height:1.55;margin-bottom:28px;max-width:760px}
+.art p{color:var(--ink2);font-size:16.5px;line-height:1.75;margin:0 0 18px;max-width:760px}
+.art h4{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:30px 0 12px}
+.art code,.inl{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.88em;padding:2px 6px;border-radius:6px;background:var(--code);border:1px solid var(--line)}
+.code{margin:8px 0 24px;border-radius:20px;background:var(--code);border:1px solid var(--line);overflow:hidden}
+.code .bar{display:flex;justify-content:space-between;align-items:center;padding:9px 12px 9px 18px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);font-family:"JetBrains Mono",ui-monospace,monospace}
+.code .cp{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:500;color:var(--muted);transition:background-color .3s,color .3s}
+.code .cp:hover{background:var(--seg);color:var(--ink)}
+.code .cp svg{width:13px;height:13px}
+.code pre{padding:18px 20px;overflow:auto;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;line-height:1.7;color:var(--ink);tab-size:4}
+.tk-kw{color:var(--kw)}.tk-fn{color:var(--fn);font-weight:500}.tk-str{color:var(--str)}.tk-num{color:var(--num)}.tk-com{color:var(--com);font-style:italic}.tk-pp{color:var(--pp)}
+.tbl{width:100%;border-collapse:collapse;margin:6px 0 24px;font-size:14.5px}
+.tbl th{text-align:left;font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--line2)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:top}
+.tbl td:first-child{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--ink);white-space:nowrap}
+.pts{list-style:none;display:grid;gap:10px;margin:4px 0 24px}
+.pts li{position:relative;padding:14px 18px 14px 44px;border-radius:16px;background:var(--seg);color:var(--ink);font-size:15px;line-height:1.5}
+.pts li::before{content:"";position:absolute;left:18px;top:19px;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#fff,#A9B4C6)}
+.simlink{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:16px 18px;border-radius:20px;border:1px dashed var(--line2);margin:8px 0 24px}
+.simlink span{font-size:14px;color:var(--muted);margin-right:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;background:var(--glass2);border:1px solid var(--gb);font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;font-weight:500;transition:transform .5s var(--spring),background-color .3s}
+.pill:hover{transform:translateY(-2px)}
+.art-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:36px;padding-top:24px;border-top:1px solid var(--line)}
+.art-foot .nav2{display:flex;gap:8px}
+.mark.done{background:var(--okbg);color:var(--ok)}
+.amd{padding:24px;border-radius:24px;background:var(--seg);margin:8px 0 26px}
+.amd .row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:18px}
+.amd label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+.amd label b{color:var(--ink);font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-weight:500;margin-left:6px}
+.amd .out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.amd .out div{padding:14px 16px;border-radius:16px;background:var(--glass2)}
+.amd .out b{display:block;font-family:"Inter Tight",Inter,system-ui,sans-serif;font-size:26px;letter-spacing:-.03em}
+.amd .out span{font-size:12.5px;color:var(--muted)}
+.amd svg{width:100%;height:auto;display:block}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;background:linear-gradient(90deg,var(--ink) var(--p,50%),var(--line2) var(--p,50%));outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#fff,#DCE2EB 45%,#A9B4C6);box-shadow:0 4px 10px rgba(40,50,70,.35);cursor:pointer;transition:transform .4s var(--spring)}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:radial-gradient(circle at 32% 30%,#fff,#DCE2EB 45%,#A9B4C6);box-shadow:0 4px 10px rgba(40,50,70,.35);cursor:pointer}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:250px minmax(0,1fr) 340px;gap:20px;align-items:start}
+.ctrl{padding:20px;border-radius:26px;display:flex;flex-direction:column;gap:20px;position:sticky;top:110px}
+.ctrl h5{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between}
+.ctrl h5 b{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);font-weight:500;letter-spacing:0}
+.ops{display:flex;flex-direction:column;gap:2px}
+.ops button{text-align:left;padding:10px 12px;border-radius:14px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--ink2);transition:background-color .4s,color .4s,transform .5s var(--spring)}
+.ops button:hover{background:var(--seg);transform:translateX(3px)}
+.ops button.on{background:var(--glass2);color:var(--ink);box-shadow:0 8px 20px -12px rgba(60,75,105,.45),inset 0 1px 0 var(--ghi)}
+.roots{display:flex;flex-wrap:wrap;gap:6px}
+.roots button{width:34px;height:34px;border-radius:12px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--seg);transition:all .4s var(--spring)}
+.roots button.on{background:var(--ink);color:var(--bg)}
+.roots.off{opacity:.35;pointer-events:none}
+.stage{border-radius:32px;overflow:hidden;padding:0}
+.stage .fogcard{border-radius:0;box-shadow:none}
+.transport{display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid var(--line);background:var(--glass)}
+.tb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--seg);transition:transform .5s var(--spring),background-color .3s}
+.tb:hover{transform:scale(1.08)}
+.tb:disabled{opacity:.35;pointer-events:none}
+.tb svg{width:18px;height:18px}
+.tb.play{width:52px;height:52px;background:var(--ink);color:var(--bg)}
+.stepinfo{margin-left:auto;text-align:right}
+.stepinfo b{display:block;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:14px;font-weight:500}
+.stepinfo span{font-size:12.5px;color:var(--muted)}
+.bar2{height:4px;background:var(--line);position:relative}
+.bar2 i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);width:0;transition:width .7s var(--spring);border-radius:0 4px 4px 0}
+.side{display:flex;flex-direction:column;gap:16px}
+.card{padding:22px;border-radius:24px}
+.card h5{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
+.card p{color:var(--ink2);font-size:14.5px;line-height:1.6}
+.card .code{margin:0}
+.card .code pre{font-size:12.5px;padding:14px 16px}
+.log{list-style:none;max-height:240px;overflow:auto;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;display:flex;flex-direction:column;gap:4px}
+.log li{padding:6px 10px;border-radius:10px;background:var(--seg);display:flex;justify-content:space-between;gap:8px;animation:pop .5s var(--spring)}
+.log li.h{background:none;color:var(--muted);padding:8px 2px 2px;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:600}
+.log .empty{color:var(--muted);font-family:Inter,system-ui,sans-serif;font-size:13.5px;background:none;padding:0}
+@keyframes pop{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+.kbd{font-size:12px;color:var(--muted);line-height:1.6}
+.kbd kbd{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid var(--line2);background:var(--seg)}
+
+svg .orbit{fill:none;stroke:rgba(14,17,23,.16);stroke-dasharray:2 7}
+[data-theme="dark"] svg .orbit{stroke:rgba(255,255,255,.14)}
+svg .nc{fill:var(--node);stroke:rgba(14,17,23,.1);stroke-width:1.5;transition:stroke .4s,opacity .5s,fill .6s}
+[data-theme="dark"] svg .nc{stroke:rgba(255,255,255,.12)}
+svg .node{transition:opacity .5s}
+svg .node.dim{opacity:.42}
+svg .node.act .nc{stroke:var(--ink);stroke-width:2.2}
+svg .node .bump{transform-box:fill-box;transform-origin:center}
+svg .node.pulse .bump{animation:bump .6s var(--spring)}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.14)}100%{transform:scale(1)}}
+svg .nt{font-family:"Inter Tight",Inter,system-ui,sans-serif;font-weight:600;font-size:18px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+svg .rr{fill:none;stroke:var(--ink);stroke-opacity:.45;stroke-dasharray:3 5;transform-box:fill-box;transform-origin:center;animation:spin 14s linear infinite}
+svg .rl{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:10px;fill:var(--muted);text-anchor:middle;letter-spacing:.06em}
+@keyframes spin{to{transform:rotate(360deg)}}
+svg .lab rect{fill:var(--pill);stroke:rgba(14,17,23,.08);transition:width .5s var(--spring),x .5s var(--spring)}
+[data-theme="dark"] svg .lab rect{stroke:rgba(255,255,255,.08)}
+svg .lab text{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+svg .edge{fill:none;stroke:var(--ink);stroke-opacity:.28;stroke-width:1.5;stroke-dasharray:4 6;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-20}}
+svg .msg rect{fill:var(--ink)}
+svg .msg text{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;font-weight:500;fill:var(--bg);text-anchor:middle;dominant-baseline:central}
+
+/* quiz */
+.qz{max-width:820px;margin:0 auto}
+.qcard{padding:40px 44px;border-radius:32px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 28px}
+.chips button{padding:9px 15px;border-radius:999px;font-size:14px;font-weight:500;background:var(--seg);color:var(--ink2);transition:all .45s var(--spring)}
+.chips button:hover{transform:translateY(-2px)}
+.chips button.on{background:var(--ink);color:var(--bg)}
+.qtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;font-size:14px;color:var(--muted)}
+.qtop b{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);font-weight:500}
+.liq{height:8px;border-radius:999px;background:var(--seg);overflow:hidden;margin-bottom:30px}
+.liq i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#C9D1DE,#8E9AB0,#C9D1DE);background-size:200% 100%;animation:shim 3s linear infinite;transition:width .9s var(--spring)}
+[data-theme="dark"] .liq i{background:linear-gradient(90deg,#4A5568,#A9B4C6,#4A5568);background-size:200% 100%}
+@keyframes shim{to{background-position:-200% 0}}
+.qq{font-family:"Inter Tight",Inter,system-ui,sans-serif;font-size:clamp(22px,2.6vw,28px);font-weight:600;letter-spacing:-.025em;line-height:1.25;margin-bottom:24px}
+.opts{display:grid;gap:10px}
+.opt{display:flex;align-items:center;gap:14px;text-align:left;padding:16px 18px;border-radius:18px;border:1px solid var(--line);background:var(--glass2);font-size:15.5px;transition:transform .5s var(--spring),border-color .3s,background-color .4s,opacity .4s}
+.opt:hover{transform:translateX(4px);border-color:var(--line2)}
+.opt .k{width:30px;height:30px;border-radius:10px;flex:none;display:grid;place-items:center;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--seg);transition:all .4s}
+.opt.sel{border-color:var(--ink)}
+.opt.sel .k{background:var(--ink);color:var(--bg)}
+.opt.ok{border-color:var(--ok);background:var(--okbg)}
+.opt.ok .k{background:var(--ok);color:#fff}
+.opt.bad{border-color:var(--bad);background:var(--badbg)}
+.opt.bad .k{background:var(--bad);color:#fff}
+.opt.mute{opacity:.5}
+.opts.locked .opt{pointer-events:none}
+.opt code,.qq code{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.9em}
+.expl{margin-top:20px;padding:18px 20px;border-radius:18px;background:var(--seg);font-size:15px;color:var(--ink2);line-height:1.6;animation:pop .6s var(--spring)}
+.expl b{color:var(--ink);display:block;margin-bottom:4px}
+.qact{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+.res{text-align:center}
+.res .big{font-family:"Inter Tight",Inter,system-ui,sans-serif;font-size:96px;font-weight:700;letter-spacing:-.06em;line-height:1}
+.res .big small{font-size:36px;color:var(--muted)}
+.rev{text-align:left;margin-top:30px;display:grid;gap:10px}
+.rev div{padding:14px 18px;border-radius:16px;background:var(--seg);font-size:14.5px;line-height:1.5}
+.rev div b{display:block;margin-bottom:4px}
+.rev .w{border-left:3px solid var(--bad)}
+
+/* tasks */
+.tfil{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.tlist{display:grid;gap:12px}
+.task{border-radius:24px;padding:0;overflow:hidden}
+.task .hd{width:100%;display:flex;align-items:center;gap:16px;padding:20px 24px;text-align:left}
+.task .num{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--muted);width:26px}
+.task .tt{flex:1}
+.task .tt b{display:block;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.task .tt span{font-size:13px;color:var(--muted)}
+.lvl{display:flex;gap:4px}
+.lvl i{width:8px;height:8px;border-radius:50%;background:var(--line2)}
+.lvl i.f{background:var(--ink)}
+.task .dn{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);display:grid;place-items:center;transition:all .5s var(--spring)}
+.task .dn svg{width:12px;height:12px;opacity:0}
+.task.done .dn{background:var(--ok);border-color:var(--ok);color:#fff}
+.task.done .dn svg{opacity:1}
+.task .chev{width:18px;height:18px;transition:transform .6s var(--spring);color:var(--muted)}
+.task.open .chev{transform:rotate(180deg)}
+.acc{display:grid;grid-template-rows:0fr;transition:grid-template-rows .6s var(--smooth)}
+.task.open .acc{grid-template-rows:1fr}
+.acc>div{overflow:hidden}
+.tb2{padding:0 24px 24px 66px}
+.tb2 p{color:var(--ink2);font-size:15.5px;line-height:1.7;margin-bottom:16px}
+.tb2 .row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.hint{padding:14px 18px;border-radius:16px;background:var(--seg);font-size:14.5px;color:var(--ink2);margin-bottom:14px;animation:pop .5s var(--spring)}
+.note{font-size:13px;color:var(--muted);margin-top:18px}
+
+/* install */
+.inst{padding:40px 44px;border-radius:32px}
+.inst p{color:var(--ink2);font-size:16px;line-height:1.7;margin-bottom:14px;max-width:760px}
+.inst .seg{margin-bottom:28px}
+
+footer{width:min(1200px,calc(100% - 32px));margin:40px auto 0;padding:28px 4px 36px;display:flex;justify-content:space-between;gap:16px;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+footer .pg{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+@media (max-width:1180px){
+  .sim{grid-template-columns:230px minmax(0,1fr)}
+  .side{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .feats{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:900px){
+  .nav{flex-wrap:wrap;padding:10px 10px 10px 18px;gap:10px}
+  .tools{margin-left:auto}
+  .links{order:3;width:100%;overflow-x:auto;margin:0;scrollbar-width:none}
+  .links::-webkit-scrollbar{display:none}
+  .wrap{padding-top:150px}
+  .hero{grid-template-columns:minmax(0,1fr);gap:28px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .prog{grid-template-columns:1fr}
+  .th{grid-template-columns:minmax(0,1fr)}
+  .mods{position:static;flex-direction:row;overflow-x:auto;scrollbar-width:none}
+  .mods button{flex:none}
+  .mods .t{white-space:nowrap}
+  .art,.qcard,.inst{padding:30px 24px}
+  .sim{grid-template-columns:minmax(0,1fr)}
+  .ctrl{position:static}
+  .ops{flex-direction:row;flex-wrap:wrap}
+  .side{grid-template-columns:minmax(0,1fr)}
+  .tb2{padding:0 20px 22px 20px}
+}
+@media (max-width:600px){
+  .feats,.rings{grid-template-columns:1fr}
+  .stat b{font-size:34px}
+  .chip{font-size:12px;padding:8px 13px 8px 10px}
+  .chip .d{width:12px;height:12px}
+  .chip.bl{left:12px;bottom:12px}.chip.br{right:12px;bottom:12px}.chip.tr{right:12px;top:12px}
+  .amd .row,.amd .out{grid-template-columns:1fr}
+  .seg button{padding:8px 11px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C9D1DE"/><stop offset="1" stop-color="#6E7B93"/></linearGradient></defs></svg>
+<div class="bg" id="bg"><div class="bw w1"><div class="blob"></div></div><div class="bw w2"><div class="blob"></div></div><div class="bw w3"><div class="blob"></div></div><div class="grain"></div></div>
+
+<header class="nav glass">
+  <a class="brand" href="#home"><span class="sphere"></span>MPI Atlas</a>
+  <nav class="links" id="links">
+    <span class="ind" id="ind"></span>
+    <a href="#home" data-v="home" data-i18n="nav_home"></a>
+    <a href="#theory" data-v="theory" data-i18n="nav_theory"></a>
+    <a href="#simulator" data-v="simulator" data-i18n="nav_sim"></a>
+    <a href="#tests" data-v="tests" data-i18n="nav_tests"></a>
+    <a href="#tasks" data-v="tasks" data-i18n="nav_tasks"></a>
+    <a href="#install" data-v="install" data-i18n="nav_install"></a>
+  </nav>
+  <div class="tools">
+    <div class="seg" id="langSeg"><span class="thumb"></span><button data-lang="ru">RU</button><button data-lang="kk">KZ</button></div>
+    <button class="icon-btn" id="themeBtn" aria-label="theme">
+      <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+      <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+<!-- HOME -->
+<section class="view" id="v-home">
+  <div class="hero">
+    <div class="words" id="words">
+      <span class="sphere" id="wdot"></span>
+      <div>Init</div><div>Send</div><div>Reduce</div><div>Finalize</div>
+    </div>
+    <div class="hero-copy">
+      <div class="eyebrow" data-i18n="hero_eyebrow"></div>
+      <h1 data-i18n="hero_title"></h1>
+      <p class="sub" data-i18n="hero_sub"></p>
+      <div class="actions">
+        <a class="btn pri" href="#theory"><span data-i18n="hero_start"></span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn sec" href="#simulator" data-i18n="hero_sim"></a>
+      </div>
+    </div>
+  </div>
+  <div class="fogcard" id="heroCard">
+    <svg id="heroSvg"></svg>
+    <div class="chip tr" id="heroStep">01 / 01</div>
+    <div class="chip bl l"><span class="d"></span><span id="heroOp">MPI_Allgather</span></div>
+    <div class="chip br"><span class="d"></span><span>np = 6</span></div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="sec-head"><div class="eyebrow" data-i18n="sec_eyebrow"></div><h2 class="h2" data-i18n="sec_title"></h2></div>
+  <div class="feats" id="feats"></div>
+  <div class="prog glass" id="prog"></div>
+</section>
+
+<!-- THEORY -->
+<section class="view" id="v-theory">
+  <div class="sec-head"><div class="eyebrow" data-i18n="th_eyebrow"></div><h2 class="h2" data-i18n="th_title"></h2></div>
+  <div class="th"><aside class="mods glass" id="mods"></aside><article class="art glass" id="art"></article></div>
+</section>
+
+<!-- SIMULATOR -->
+<section class="view" id="v-simulator">
+  <div class="sec-head"><div class="eyebrow" data-i18n="sim_eyebrow"></div><h2 class="h2" data-i18n="sim_title"></h2><p class="sub" data-i18n="sim_sub"></p></div>
+  <div class="sim">
+    <aside class="ctrl glass">
+      <div><h5 data-i18n="sim_op"></h5><div class="ops" id="ops"></div></div>
+      <div><h5><span data-i18n="sim_np"></span><b id="npVal">4</b></h5><input type="range" id="np" min="2" max="8" value="4"></div>
+      <div><h5 data-i18n="sim_root"></h5><div class="roots" id="roots"></div></div>
+      <div><h5><span data-i18n="sim_speed"></span><b id="spVal">1.0×</b></h5><input type="range" id="speed" min="0.4" max="2.4" step="0.1" value="1"></div>
+      <div class="kbd" data-i18n-html="sim_keys"></div>
+    </aside>
+    <div class="stage glass">
+      <div class="fogcard"><svg id="simSvg"></svg></div>
+      <div class="bar2"><i id="simBar"></i></div>
+      <div class="transport">
+        <button class="tb" id="bReset" title="Reset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+        <button class="tb" id="bBack"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 6v12l-9-6z"/><rect x="5" y="6" width="2.4" height="12" rx="1"/></svg></button>
+        <button class="tb play" id="bPlay"><svg id="icPlay" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg><svg id="icPause" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6.5" y="5" width="3.8" height="14" rx="1.2"/><rect x="13.7" y="5" width="3.8" height="14" rx="1.2"/></svg></button>
+        <button class="tb" id="bFwd"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 6v12l9-6z"/><rect x="16.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
+        <div class="stepinfo"><b id="stepTxt"></b><span id="stepSub"></span></div>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card glass"><h5 data-i18n="sim_how"></h5><p id="simDesc"></p></div>
+      <div class="card glass"><h5 data-i18n="sim_code"></h5><div id="simCode"></div></div>
+      <div class="card glass"><h5 data-i18n="sim_log"></h5><ul class="log" id="simLog"></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTS -->
+<section class="view" id="v-tests"><div class="qz" id="quiz"></div></section>
+
+<!-- TASKS -->
+<section class="view" id="v-tasks">
+  <div class="sec-head"><div class="eyebrow" data-i18n="tk_eyebrow"></div><h2 class="h2" data-i18n="tk_title"></h2><p class="sub" data-i18n="tk_sub"></p></div>
+  <div class="chips tfil" id="tfil"></div>
+  <div class="tlist" id="tlist"></div>
+  <p class="note" data-i18n="tk_note"></p>
+</section>
+
+<!-- INSTALL -->
+<section class="view" id="v-install">
+  <div class="sec-head"><div class="eyebrow" data-i18n="in_eyebrow"></div><h2 class="h2" data-i18n="in_title"></h2></div>
+  <div class="inst glass" id="inst"></div>
+</section>
+
+</div>
+</main>
+<footer><span data-i18n="foot"></span><span class="pg" id="pg">01 / 06</span></footer>
+
+<script>
+"use strict";
+let current='';
+/* ---------- utilities ---------- */
+const $=(s,e=document)=>e.querySelector(s), $$=(s,e=document)=>[...e.querySelectorAll(s)];
+const store={get(k,d){try{const v=localStorage.getItem('mpiatlas:'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('mpiatlas:'+k,JSON.stringify(v))}catch(e){}}};
+let LANG=store.get('lang','ru');
+const L=x=>Array.isArray(x)?x[LANG==='ru'?0:1]:(x&&typeof x==='object'&&!Array.isArray(x)&&(x.ru||x.kk))?x[LANG]:x;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const ICON={
+ arr:'<svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+ back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
+ check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+ copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
+ chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+ book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg>',
+ net:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="4.5" r="2.2"/><circle cx="4.5" cy="18" r="2.2"/><circle cx="19.5" cy="18" r="2.2"/><path d="M11 6.5L5.7 16M13 6.5l5.3 9.5M6.8 18h10.4"/></svg>',
+ quiz:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/></svg>',
+ code:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4l-3 16"/></svg>'
+};
+
+/* ---------- UI strings ---------- */
+const UI={
+ nav_home:['Главная','Басты бет'],nav_theory:['Теория','Теория'],nav_sim:['Симулятор','Симулятор'],nav_tests:['Тесты','Тесттер'],nav_tasks:['Задачи','Тапсырмалар'],nav_install:['Установка','Орнату'],
+ hero_eyebrow:['Курс параллельного программирования','Параллель бағдарламалау курсы'],
+ hero_title:['Как процессы говорят друг с другом','Процестер бір-бірімен қалай сөйлеседі'],
+ hero_sub:['Теория MPI, живой симулятор коммуникаций, тесты и практические задачи — всё, чтобы понять, как параллельные процессы обмениваются данными.','MPI теориясы, коммуникациялардың тірі симуляторы, тесттер мен практикалық тапсырмалар — параллель процестердің деректермен қалай алмасатынын түсіну үшін барлығы бір жерде.'],
+ hero_start:['Начать обучение','Оқуды бастау'],hero_sim:['Открыть симулятор','Симуляторды ашу'],
+ st_mod:['модулей теории','теория модулі'],st_q:['вопросов в тесте','тест сұрағы'],st_t:['практических задач','практикалық тапсырма'],st_op:['операций в симуляторе','симулятордағы операция'],
+ sec_eyebrow:['Разделы','Бөлімдер'],sec_title:['Всё для изучения MPI','MPI-ды оқуға арналған барлығы'],
+ f_th:['Теория','Теория'],f_th_d:['Восемь модулей — от MPI_Init до закона Амдала, с примерами кода на C и таблицами функций.','Сегіз модуль — MPI_Init-тен Амдал заңына дейін, C тіліндегі код мысалдары мен функциялар кестелерімен.'],
+ f_sim:['Живой симулятор','Тірі симулятор'],f_sim_d:['Запускайте операции MPI и смотрите, как сообщения движутся между процессами — шаг за шагом, с кодом и журналом.','MPI операцияларын іске қосып, хабарламалардың процестер арасында қалай қозғалатынын қадам сайын, кодпен және журналмен бақылаңыз.'],
+ f_q:['Тесты','Тесттер'],f_q_d:['Двадцать вопросов по всем темам с разбором каждого ответа и сохранением лучшего результата.','Барлық тақырып бойынша жиырма сұрақ, әр жауаптың түсіндірмесі және үздік нәтижені сақтау.'],
+ f_t:['Практика','Практика'],f_t_d:['Двенадцать задач по четырём группам — с подсказками и полными решениями.','Төрт топ бойынша он екі тапсырма — кеңестері мен толық шешімдерімен.'],
+ f_new:['Новое','Жаңа'],f_open:['Открыть','Ашу'],
+ pr_title:['Ваш прогресс','Сіздің прогресіңіз'],pr_sub:['Сохраняется в этом браузере. Отмечайте модули, проходите тест и решайте задачи.','Осы браузерде сақталады. Модульдерді белгілеп, тесттен өтіп, тапсырмаларды шешіңіз.'],
+ pr_mod:['модулей изучено','модуль оқылды'],pr_q:['лучший результат теста','тесттің үздік нәтижесі'],pr_t:['задач выполнено','тапсырма орындалды'],
+ th_eyebrow:['Теория','Теория'],th_title:['Основы MPI','MPI негіздері'],
+ mod:['Модуль','Модуль'],key:['Ключевое','Негізгі түйін'],mark:['Отметить как изученный','Оқылды деп белгілеу'],marked:['Изучено','Оқылды'],prev:['Назад','Артқа'],next:['Далее','Келесі'],
+ open_sim:['Открыть в симуляторе:','Симуляторда ашу:'],copy:['Копировать','Көшіру'],copied:['Скопировано','Көшірілді'],
+ sim_eyebrow:['Уникальная функция','Ерекше мүмкіндік'],sim_title:['Симулятор MPI-коммуникаций','MPI коммуникацияларының симуляторы'],
+ sim_sub:['Выберите операцию, число процессов и корень. Каждое сообщение движется по сцене, а буферы процессов обновляются после каждого шага.','Операцияны, процестер санын және түбірді таңдаңыз. Әр хабарлама сахна бойымен қозғалады, ал процестердің буферлері әр қадамнан кейін жаңарады.'],
+ sim_op:['Операция','Операция'],sim_np:['Процессов','Процестер саны'],sim_root:['Корень (root)','Түбір (root)'],sim_speed:['Скорость','Жылдамдық'],
+ sim_how:['Как это работает','Бұл қалай жұмыс істейді'],sim_code:['Код на C','C тіліндегі код'],sim_log:['Журнал сообщений','Хабарламалар журналы'],
+ sim_keys:['<kbd>Space</kbd> запуск и пауза, <kbd>←</kbd> <kbd>→</kbd> шаги, <kbd>R</kbd> сброс','<kbd>Space</kbd> іске қосу және кідірту, <kbd>←</kbd> <kbd>→</kbd> қадамдар, <kbd>R</kbd> қалпына келтіру'],
+ step:['Шаг','Қадам'],s_init:['Начальное состояние','Бастапқы күй'],s_done:['Готово','Дайын'],s_run:['Обмен сообщениями','Хабарлама алмасу'],
+ log_empty:['Сообщений пока нет. Нажмите запуск или шаг вперёд.','Әзірге хабарламалар жоқ. Іске қосуды немесе алға қадамды басыңыз.'],
+ v_run:['работа','жұмыс'],v_wait:['ждёт','күтуде'],v_go:['дальше','әрі қарай'],
+ q_eyebrow:['Тесты','Тесттер'],q_title:['Проверьте себя','Өзіңізді тексеріңіз'],
+ q_sub:['Выберите темы и пройдите тест. После каждого ответа появится объяснение.','Тақырыптарды таңдап, тесттен өтіңіз. Әр жауаптан кейін түсіндірме шығады.'],
+ q_all:['Все темы','Барлық тақырып'],q_start:['Начать тест','Тестті бастау'],q_count:['вопросов','сұрақ'],q_best:['Лучший результат','Үздік нәтиже'],
+ q_q:['Вопрос','Сұрақ'],q_check:['Ответить','Жауап беру'],q_next:['Далее','Келесі'],q_finish:['Завершить','Аяқтау'],
+ q_ok:['Верно','Дұрыс'],q_bad:['Неверно','Қате'],q_res:['Результат','Нәтиже'],q_again:['Пройти снова','Қайта өту'],q_rev:['Разбор ошибок','Қателерді талдау'],q_toth:['К теории','Теорияға'],
+ q_r1:['Отлично — материал усвоен.','Өте жақсы — материал меңгерілді.'],q_r2:['Хороший результат. Повторите темы, где были ошибки.','Жақсы нәтиже. Қате кеткен тақырыптарды қайталаңыз.'],q_r3:['Стоит вернуться к теории и попробовать ещё раз.','Теорияға қайта оралып, тағы бір рет көрген жөн.'],
+ q_ans:['Правильный ответ:','Дұрыс жауап:'],
+ tk_eyebrow:['Практика','Практика'],tk_title:['Практические задачи','Практикалық тапсырмалар'],
+ tk_sub:['Решите задачу сами, при необходимости откройте подсказку, затем сверьтесь с решением.','Тапсырманы өзіңіз шешіңіз, қажет болса кеңесті ашыңыз, содан кейін шешіммен салыстырыңыз.'],
+ tk_all:['Все','Барлығы'],tk_hint:['Подсказка','Кеңес'],tk_sol:['Решение','Шешім'],tk_mark:['Отметить выполненной','Орындалды деп белгілеу'],tk_done:['Выполнено','Орындалды'],
+ tk_note:['Решения приведены как тело функции main: подключите mpi.h и stdio.h, а для malloc — stdlib.h.','Шешімдер main функциясының денесі ретінде берілген: mpi.h және stdio.h, ал malloc үшін stdlib.h тақырыптарын қосыңыз.'],
+ in_eyebrow:['Установка','Орнату'],in_title:['Установка и запуск','Орнату және іске қосу'],
+ foot:['MPI Atlas — учебный ресурс по параллельным вычислениям','MPI Atlas — параллель есептеулер бойынша оқу ресурсы'],
+ amd_f:['Последовательная доля f','Тізбекті үлес f'],amd_p:['Число процессов p','Процестер саны p'],amd_s:['Ускорение S(p)','Үдеу S(p)'],amd_e:['Эффективность E(p)','Тиімділік E(p)'],amd_l:['Предел 1/f','1/f шегі'],amd_inf:['нет','жоқ']
+};
+const T=k=>L(UI[k]);
+
+/* ---------- theory content ---------- */
+const MODS=[
+{title:['Введение в MPI','MPI-ға кіріспе'],
+ lead:['MPI (Message Passing Interface) — стандарт передачи сообщений для параллельных программ с распределённой памятью.','MPI (Message Passing Interface) — таратылған жадысы бар параллель бағдарламаларға арналған хабарлама жіберу стандарты.'],
+ blocks:[
+  {p:['В модели с распределённой памятью каждый процесс имеет собственное адресное пространство. Процессы не видят переменные друг друга и обмениваются данными только явно — отправляя и принимая сообщения. MPI описывает набор функций для такого обмена и не привязан к одному языку: есть привязки для C, C++ и Fortran, а через библиотеки — для Python (mpi4py) и других языков.','Таратылған жады моделінде әр процестің өз адрестік кеңістігі болады. Процестер бір-бірінің айнымалыларын көрмейді және деректермен тек айқын түрде — хабарламаларды жіберу және қабылдау арқылы алмасады. MPI осындай алмасуға арналған функциялар жиынын сипаттайды және бір тілге байланбаған: C, C++ және Fortran үшін байланыстар бар, ал кітапханалар арқылы Python (mpi4py) және басқа тілдерге де қолжетімді.']},
+  {p:['Большинство MPI-программ пишутся в стиле SPMD (Single Program, Multiple Data): одна и та же программа запускается в нескольких экземплярах, а поведение каждого экземпляра определяется его номером — рангом.','MPI бағдарламаларының көбі SPMD (Single Program, Multiple Data) стилінде жазылады: бір бағдарлама бірнеше данада іске қосылады, ал әр дананың әрекеті оның нөмірімен — рангімен анықталады.']},
+  {p:['Первая версия стандарта, MPI-1, вышла в 1994 году. Затем появились MPI-2 (1997) с односторонними обменами и параллельным вводом-выводом, MPI-3 (2012) с неблокирующими коллективными операциями и MPI-4 (2021).','Стандарттың алғашқы нұсқасы MPI-1 1994 жылы шықты. Содан кейін біржақты алмасулар мен параллель енгізу-шығаруы бар MPI-2 (1997), бұғаттамайтын ұжымдық операциялары бар MPI-3 (2012) және MPI-4 (2021) пайда болды.']},
+  {h:['Реализации','Іске асырулар']},
+  {table:{head:[['Реализация','Іске асыру'],['Особенности','Ерекшеліктері']],rows:[
+   ['MPICH',['Эталонная открытая реализация, основа многих других','Көптеген басқаларының негізі болған ашық эталондық іске асыру']],
+   ['Open MPI',['Открытая реализация, популярна на Linux-кластерах','Linux кластерлерінде танымал ашық іске асыру']],
+   ['Intel MPI',['Основана на MPICH, оптимизирована для оборудования Intel','MPICH негізінде жасалған, Intel жабдығына оңтайландырылған']],
+   ['MS-MPI',['Реализация Microsoft для Windows','Microsoft-тың Windows-қа арналған іске асыруы']]]}},
+  {h:['Ключевое','Негізгі түйін']},
+  {pts:[['Каждый процесс — отдельная копия программы со своей памятью','Әр процесс — өз жадысы бар бағдарламаның жеке көшірмесі'],['Обмен данными происходит только через сообщения','Деректер алмасу тек хабарламалар арқылы жүреді'],['Ранг процесса определяет, какую часть работы он выполняет','Процестің рангі оның жұмыстың қай бөлігін орындайтынын анықтайды']]}
+ ]},
+{title:['Структура MPI-программы','MPI бағдарламасының құрылымы'],
+ lead:['Любая MPI-программа начинается с MPI_Init и заканчивается MPI_Finalize.','Кез келген MPI бағдарламасы MPI_Init-тен басталып, MPI_Finalize-мен аяқталады.'],
+ blocks:[
+  {p:['Между MPI_Init и MPI_Finalize можно вызывать остальные функции MPI. MPI_Comm_size возвращает общее число процессов в коммуникаторе, а MPI_Comm_rank — номер текущего процесса от 0 до size − 1.','MPI_Init пен MPI_Finalize арасында MPI-дің басқа функцияларын шақыруға болады. MPI_Comm_size коммуникатордағы процестердің жалпы санын, ал MPI_Comm_rank ағымдағы процестің 0-ден size − 1-ге дейінгі нөмірін қайтарады.']},
+  {code:`#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+    int rank, size;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    printf("Hello from process %d of %d\\n", rank, size);
+
+    MPI_Finalize();
+    return 0;
+}`,lang:'c',file:'hello.c'},
+  {p:['Программа компилируется обёрткой компилятора mpicc, а запускается через mpirun или mpiexec, где параметр -np задаёт число процессов.','Бағдарлама mpicc компилятор қаптамасымен компиляцияланады, ал mpirun немесе mpiexec арқылы іске қосылады, мұнда -np параметрі процестер санын береді.']},
+  {code:`mpicc hello.c -o hello
+mpirun -np 4 ./hello`,lang:'sh',file:'terminal'},
+  {code:`Hello from process 1 of 4
+Hello from process 0 of 4
+Hello from process 3 of 4
+Hello from process 2 of 4`,lang:'out',file:'output'},
+  {p:['Порядок строк от разных процессов не гарантирован: процессы работают независимо, и их вывод может перемешиваться.','Әртүрлі процестерден шығатын жолдардың реті кепілдендірілмейді: процестер тәуелсіз жұмыс істейді, сондықтан олардың шығысы араласып кетуі мүмкін.']},
+  {h:['Функции','Функциялар']},
+  {table:{head:[['Функция','Функция'],['Назначение','Мақсаты']],rows:[
+   ['MPI_Init',['Инициализирует среду MPI','MPI ортасын инициализациялайды']],
+   ['MPI_Comm_size',['Число процессов в коммуникаторе','Коммуникатордағы процестер саны']],
+   ['MPI_Comm_rank',['Ранг текущего процесса','Ағымдағы процестің рангі']],
+   ['MPI_Get_processor_name',['Имя вычислительного узла','Есептеу түйінінің атауы']],
+   ['MPI_Wtime',['Время в секундах для замеров','Өлшеулерге арналған секундтағы уақыт']],
+   ['MPI_Finalize',['Завершает работу с MPI','MPI-мен жұмысты аяқтайды']]]}}
+ ]},
+{title:['Коммуникаторы и группы','Коммуникаторлар және топтар'],
+ lead:['Коммуникатор задаёт, какие процессы могут обмениваться сообщениями друг с другом.','Коммуникатор қандай процестердің бір-бірімен хабарлама алмаса алатынын анықтайды.'],
+ blocks:[
+  {p:['Коммуникатор — это группа процессов вместе с контекстом обмена. Сообщение, отправленное в одном коммуникаторе, нельзя принять в другом. Предопределённый MPI_COMM_WORLD включает все запущенные процессы, а MPI_COMM_SELF — только текущий процесс.','Коммуникатор — бұл алмасу контекстімен бірге алынған процестер тобы. Бір коммуникаторда жіберілген хабарламаны басқасында қабылдау мүмкін емес. Алдын ала анықталған MPI_COMM_WORLD барлық іске қосылған процестерді, ал MPI_COMM_SELF тек ағымдағы процесті қамтиды.']},
+  {p:['MPI_Comm_split разбивает коммуникатор на части: процессы с одинаковым значением color попадают в один новый коммуникатор, а key задаёт порядок рангов внутри него. Так удобно организовать строки и столбцы процессной решётки.','MPI_Comm_split коммуникаторды бөліктерге бөледі: color мәні бірдей процестер бір жаңа коммуникаторға түседі, ал key ондағы рангтердің ретін береді. Бұл процестік тордың жолдары мен бағандарын ұйымдастыруға ыңғайлы.']},
+  {code:`int world_rank, row_rank, row_size;
+MPI_Comm row_comm;
+
+MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+int color = world_rank / 4;      /* row of a 4-column grid */
+MPI_Comm_split(MPI_COMM_WORLD, color, world_rank, &row_comm);
+
+MPI_Comm_rank(row_comm, &row_rank);
+MPI_Comm_size(row_comm, &row_size);
+
+printf("world %d -> row %d, rank %d of %d\\n",
+       world_rank, color, row_rank, row_size);
+
+MPI_Comm_free(&row_comm);`,lang:'c',file:'split.c'},
+  {p:['Созданный коммуникатор нужно освободить вызовом MPI_Comm_free, когда он больше не нужен.','Құрылған коммуникаторды қажет болмаған кезде MPI_Comm_free шақыруымен босату керек.']},
+  {h:['Ключевое','Негізгі түйін']},
+  {pts:[['Ранг процесса имеет смысл только внутри конкретного коммуникатора','Процестің рангі тек нақты коммуникатордың ішінде мағыналы'],['Один процесс может входить в несколько коммуникаторов с разными рангами','Бір процесс әртүрлі рангтермен бірнеше коммуникаторға кіре алады'],['Отдельные коммуникаторы изолируют сообщения библиотек от сообщений программы','Жеке коммуникаторлар кітапхана хабарламаларын бағдарлама хабарламаларынан оқшаулайды']]}
+ ]},
+{title:['Двухточечные обмены','Нүктеден нүктеге алмасу'],
+ lead:['MPI_Send и MPI_Recv связывают ровно два процесса: отправителя и получателя.','MPI_Send және MPI_Recv дәл екі процесті байланыстырады: жіберуші мен алушыны.'],
+ blocks:[
+  {p:['Сообщение описывается тройкой «буфер, количество, тип данных» и конвертом «отправитель, получатель, тег, коммуникатор». Тег — целое число, по которому получатель может отличать сообщения разного назначения.','Хабарлама «буфер, саны, деректер типі» үштігімен және «жіберуші, алушы, тег, коммуникатор» конвертімен сипатталады. Тег — бүтін сан, ол арқылы алушы әртүрлі мақсаттағы хабарламаларды ажырата алады.']},
+  {code:`int MPI_Send(const void *buf, int count, MPI_Datatype type,
+             int dest, int tag, MPI_Comm comm);
+
+int MPI_Recv(void *buf, int count, MPI_Datatype type,
+             int source, int tag, MPI_Comm comm, MPI_Status *status);`,lang:'c',file:'signatures'},
+  {p:['Получатель может принимать сообщения от любого отправителя (MPI_ANY_SOURCE) и с любым тегом (MPI_ANY_TAG). Фактические параметры сообщения записываются в MPI_Status: поля MPI_SOURCE и MPI_TAG, а длину возвращает MPI_Get_count.','Алушы кез келген жіберушіден (MPI_ANY_SOURCE) және кез келген тегпен (MPI_ANY_TAG) хабарлама қабылдай алады. Хабарламаның нақты параметрлері MPI_Status-қа жазылады: MPI_SOURCE және MPI_TAG өрістері, ал ұзындығын MPI_Get_count қайтарады.']},
+  {code:`if (rank == 0) {
+    double x[3] = {1.5, 2.5, 3.5};
+    MPI_Send(x, 3, MPI_DOUBLE, 1, 7, MPI_COMM_WORLD);
+} else if (rank == 1) {
+    double y[10];
+    MPI_Status st;
+    int n;
+    MPI_Recv(y, 10, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG,
+             MPI_COMM_WORLD, &st);
+    MPI_Get_count(&st, MPI_DOUBLE, &n);
+    printf("got %d values from %d, tag %d\\n", n, st.MPI_SOURCE, st.MPI_TAG);
+}`,lang:'c',file:'p2p.c'},
+  {h:['Типы данных','Деректер типтері']},
+  {table:{head:[['Тип MPI','MPI типі'],['Тип C','C типі']],rows:[['MPI_INT','int'],['MPI_LONG','long'],['MPI_FLOAT','float'],['MPI_DOUBLE','double'],['MPI_CHAR','char'],['MPI_BYTE',['байты без интерпретации','интерпретациясыз байттар']]]}},
+  {sims:['sendrecv','ring']}
+ ]},
+{title:['Режимы передачи и взаимоблокировки','Жіберу режимдері және өзара бұғаттау'],
+ lead:['Блокирующие операции удобны, но неверный порядок вызовов может навсегда остановить программу.','Бұғаттайтын операциялар ыңғайлы, бірақ шақырулардың қате реті бағдарламаны мүлдем тоқтатып тастауы мүмкін.'],
+ blocks:[
+  {p:['MPI_Send возвращает управление, когда буфер отправки можно безопасно переиспользовать. Будет ли сообщение буферизовано или отправитель дождётся получателя, решает реализация, поэтому корректная программа не должна полагаться на буферизацию.','MPI_Send жіберу буферін қауіпсіз қайта пайдалануға болған кезде басқаруды қайтарады. Хабарлама буферленеді ме, әлде жіберуші алушыны күте ме — оны іске асыру шешеді, сондықтан дұрыс бағдарлама буферлеуге сүйенбеуі керек.']},
+  {table:{head:[['Режим','Режим'],['Когда завершается','Қашан аяқталады']],rows:[
+   ['MPI_Send',['Стандартный: буфер можно переиспользовать','Стандартты: буферді қайта пайдалануға болады']],
+   ['MPI_Ssend',['Синхронный: получатель начал приём','Синхронды: алушы қабылдауды бастады']],
+   ['MPI_Bsend',['Буферизованный: данные скопированы в буфер MPI_Buffer_attach','Буферленген: деректер MPI_Buffer_attach буферіне көшірілді']],
+   ['MPI_Rsend',['Режим готовности: допустим, только если приём уже начат','Дайындық режимі: қабылдау басталған жағдайда ғана рұқсат']]]}},
+  {p:['Взаимоблокировка (deadlock) возникает, когда процессы бесконечно ждут друг друга. Классический пример — оба процесса сначала вызывают MPI_Recv: каждый ждёт сообщения, которое никто не отправит.','Өзара бұғаттау (deadlock) процестер бір-бірін шексіз күткенде пайда болады. Классикалық мысал — екі процесс те алдымен MPI_Recv шақырады: әрқайсысы ешкім жібермейтін хабарламаны күтеді.']},
+  {code:`/* deadlock: both processes block in MPI_Recv */
+int other = 1 - rank;
+MPI_Recv(&in,  1, MPI_INT, other, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+MPI_Send(&out, 1, MPI_INT, other, 0, MPI_COMM_WORLD);`,lang:'c',file:'deadlock.c'},
+  {code:`/* safe exchange */
+int other = 1 - rank;
+MPI_Sendrecv(&out, 1, MPI_INT, other, 0,
+             &in,  1, MPI_INT, other, 0,
+             MPI_COMM_WORLD, MPI_STATUS_IGNORE);`,lang:'c',file:'sendrecv.c'},
+  {h:['Как избежать','Қалай болдырмау керек']},
+  {pts:[['Упорядочить вызовы: чётные ранги сначала отправляют, нечётные — принимают','Шақыруларды реттеу: жұп рангтер алдымен жібереді, тақ рангтер — қабылдайды'],['Использовать MPI_Sendrecv для парных обменов','Жұптық алмасулар үшін MPI_Sendrecv қолдану'],['Перейти на неблокирующие MPI_Isend и MPI_Irecv','Бұғаттамайтын MPI_Isend пен MPI_Irecv-ке көшу'],['Проверять программу с MPI_Ssend: так проявляются скрытые deadlock','Бағдарламаны MPI_Ssend-пен тексеру: жасырын deadlock осылай байқалады']]}
+ ]},
+{title:['Неблокирующие операции','Бұғаттамайтын операциялар'],
+ lead:['Неблокирующие вызовы позволяют считать, пока данные передаются по сети.','Бұғаттамайтын шақырулар деректер желі арқылы берілгенде есептеуге мүмкіндік береді.'],
+ blocks:[
+  {p:['MPI_Isend и MPI_Irecv только инициируют обмен и сразу возвращают управление вместе с объектом запроса MPI_Request. Пока обмен идёт, процесс может выполнять вычисления — так вычисления и коммуникации перекрываются.','MPI_Isend және MPI_Irecv алмасуды тек бастайды да, MPI_Request сұраныс объектісімен бірге басқаруды бірден қайтарады. Алмасу жүріп жатқанда процесс есептеулерді орындай алады — осылайша есептеулер мен коммуникациялар қабаттасады.']},
+  {code:`MPI_Request req[2];
+int left  = (rank - 1 + size) % size;
+int right = (rank + 1) % size;
+
+MPI_Irecv(&from_left, 1, MPI_INT, left,  0, MPI_COMM_WORLD, &req[0]);
+MPI_Isend(&mine,      1, MPI_INT, right, 0, MPI_COMM_WORLD, &req[1]);
+
+compute_interior();          /* useful work while data is in flight */
+
+MPI_Waitall(2, req, MPI_STATUSES_IGNORE);
+compute_boundary(from_left);`,lang:'c',file:'overlap.c'},
+  {p:['Завершить операцию можно через MPI_Wait или MPI_Waitall, а проверить её состояние без ожидания — через MPI_Test. До завершения нельзя изменять буфер отправки и читать буфер приёма.','Операцияны MPI_Wait немесе MPI_Waitall арқылы аяқтауға, ал оның күйін күтпей MPI_Test арқылы тексеруге болады. Аяқталғанға дейін жіберу буферін өзгертуге және қабылдау буферін оқуға болмайды.']},
+  {table:{head:[['Функция','Функция'],['Назначение','Мақсаты']],rows:[
+   ['MPI_Isend',['Начать отправку','Жіберуді бастау']],
+   ['MPI_Irecv',['Начать приём','Қабылдауды бастау']],
+   ['MPI_Wait',['Дождаться завершения одного запроса','Бір сұраныстың аяқталуын күту']],
+   ['MPI_Waitall',['Дождаться всех запросов массива','Массивтегі барлық сұраныстарды күту']],
+   ['MPI_Test',['Проверить завершение без ожидания','Аяқталуын күтпей тексеру']]]}}
+ ]},
+{title:['Коллективные операции','Ұжымдық операциялар'],
+ lead:['Одна функция — и все процессы коммуникатора участвуют в обмене.','Бір функция — және коммуникатордың барлық процестері алмасуға қатысады.'],
+ blocks:[
+  {p:['Коллективные операции вызываются всеми процессами коммуникатора. Они выражают типовые схемы обмена одним вызовом, а реализации MPI выполняют их по оптимизированным алгоритмам — например, по двоичному дереву за ⌈log₂p⌉ шагов вместо p − 1.','Ұжымдық операцияларды коммуникатордың барлық процестері шақырады. Олар типтік алмасу схемаларын бір шақырумен өрнектейді, ал MPI іске асырулары оларды оңтайландырылған алгоритмдермен орындайды — мысалы, p − 1 қадамның орнына екілік ағаш бойынша ⌈log₂p⌉ қадаммен.']},
+  {table:{head:[['Операция','Операция'],['Что делает','Не істейді']],rows:[
+   ['MPI_Barrier',['Синхронизирует все процессы','Барлық процестерді синхрондайды']],
+   ['MPI_Bcast',['Копирует данные корня во все процессы','Түбір деректерін барлық процестерге көшіреді']],
+   ['MPI_Scatter',['Раздаёт части массива корня по процессам','Түбір массивінің бөліктерін процестерге таратады']],
+   ['MPI_Gather',['Собирает значения всех процессов на корне','Барлық процестердің мәндерін түбірге жинайды']],
+   ['MPI_Allgather',['Собирает значения во всех процессах','Мәндерді барлық процестерде жинайды']],
+   ['MPI_Reduce',['Редукция с результатом на корне','Нәтижесі түбірде болатын редукция']],
+   ['MPI_Allreduce',['Редукция с результатом во всех процессах','Нәтижесі барлық процестерде болатын редукция']],
+   ['MPI_Alltoall',['Каждый отправляет каждому свой блок','Әрқайсысы әрқайсысына өз блогын жібереді']]]}},
+  {code:`int n = 0;
+if (rank == 0) n = 1000;
+MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+double local = 0.0, total = 0.0;
+for (int i = rank; i < n; i += size)
+    local += f(i);
+
+MPI_Reduce(&local, &total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);`,lang:'c',file:'collective.c'},
+  {p:['Предопределённые операции редукции: MPI_SUM, MPI_PROD, MPI_MAX, MPI_MIN, логические MPI_LAND и MPI_LOR, а также MPI_MAXLOC и MPI_MINLOC, которые возвращают значение вместе с рангом его владельца.','Алдын ала анықталған редукция операциялары: MPI_SUM, MPI_PROD, MPI_MAX, MPI_MIN, логикалық MPI_LAND және MPI_LOR, сондай-ақ мәнді оның иесінің рангімен бірге қайтаратын MPI_MAXLOC және MPI_MINLOC.']},
+  {p:['Все процессы должны вызывать коллективные операции в одинаковом порядке. Если хотя бы один процесс пропустит вызов, остальные могут зависнуть.','Барлық процестер ұжымдық операцияларды бірдей ретпен шақыруы тиіс. Егер кемінде бір процесс шақыруды өткізіп алса, қалғандары қатып қалуы мүмкін.']},
+  {sims:['bcast','scatter','gather','reduce','allreduce','allgather','barrier']}
+ ]},
+{title:['Производительность и закон Амдала','Өнімділік және Амдал заңы'],
+ lead:['Больше процессов — не всегда пропорционально быстрее.','Процестер көбейген сайын әрдайым пропорционалды жылдамдай бермейді.'],
+ blocks:[
+  {p:['Ускорение S(p) = T₁ / Tₚ показывает, во сколько раз программа на p процессах быстрее последовательной. Эффективность E(p) = S(p) / p показывает, какая доля вычислительных ресурсов используется полезно.','Үдеу S(p) = T₁ / Tₚ бағдарламаның p процесте тізбектіге қарағанда неше есе жылдам екенін көрсетеді. Тиімділік E(p) = S(p) / p есептеу ресурстарының қандай үлесі пайдалы қолданылатынын көрсетеді.']},
+  {p:['Закон Амдала: если доля f программы выполняется только последовательно, то S(p) = 1 / (f + (1 − f) / p), и при любом числе процессов ускорение не превышает 1 / f. Попробуйте сами:','Амдал заңы: егер бағдарламаның f үлесі тек тізбекті орындалса, онда S(p) = 1 / (f + (1 − f) / p), және процестер саны қанша болса да үдеу 1 / f-тен аспайды. Өзіңіз байқап көріңіз:']},
+  {widget:'amdahl'},
+  {p:['Закон Густафсона смотрит иначе: с ростом числа процессов обычно растёт и размер задачи, поэтому масштабируемое ускорение S = p − f(p − 1).','Густафсон заңы басқаша қарайды: процестер саны өскенде әдетте есептің өлшемі де өседі, сондықтан масштабталатын үдеу S = p − f(p − 1).']},
+  {code:`MPI_Barrier(MPI_COMM_WORLD);
+double t0 = MPI_Wtime();
+
+solve();                         /* measured part */
+
+MPI_Barrier(MPI_COMM_WORLD);
+double t1 = MPI_Wtime();
+if (rank == 0) printf("time: %.3f s\\n", t1 - t0);`,lang:'c',file:'timing.c'},
+  {p:['Барьеры перед замером выравнивают старт процессов, а итоговое время определяется самым медленным из них.','Өлшеу алдындағы барьерлер процестердің басталуын теңестіреді, ал қорытынды уақыт олардың ең баяуымен анықталады.']},
+  {h:['Ключевое','Негізгі түйін']},
+  {pts:[['Коммуникации — накладные расходы: чем их меньше относительно вычислений, тем лучше','Коммуникациялар — қосымша шығын: олар есептеулерге қатысты неғұрлым аз болса, соғұрлым жақсы'],['Неравномерная нагрузка заставляет быстрые процессы ждать медленные','Біркелкі емес жүктеме жылдам процестерді баяуларын күтуге мәжбүрлейді'],['Последовательная часть ограничивает ускорение сверху','Тізбекті бөлік үдеуді жоғарыдан шектейді']]}
+ ]}
+];
+
+/* ---------- quiz ---------- */
+const QUIZ=[
+{m:1,q:['Что возвращает функция <code>MPI_Comm_rank</code>?','<code>MPI_Comm_rank</code> функциясы нені қайтарады?'],o:[['Общее число процессов','Жалпы процестер саны'],['Номер текущего процесса в коммуникаторе','Коммуникатордағы ағымдағы процестің нөмірі'],['Имя вычислительного узла','Есептеу түйінінің атауы'],['Идентификатор коммуникатора','Коммуникатор идентификаторы']],a:1,e:['MPI_Comm_rank записывает ранг — номер процесса от 0 до size − 1. Общее число процессов возвращает MPI_Comm_size.','MPI_Comm_rank рангті — 0-ден size − 1-ге дейінгі процесс нөмірін жазады. Процестердің жалпы санын MPI_Comm_size қайтарады.']},
+{m:1,q:['Какую функцию MPI нужно вызвать раньше всех остальных?','MPI-дің қай функциясын басқалардың бәрінен бұрын шақыру керек?'],o:['<code>MPI_Comm_rank</code>','<code>MPI_Init</code>','<code>MPI_Start</code>','<code>MPI_Comm_size</code>'],a:1,e:['MPI_Init инициализирует среду выполнения; до него допустимы лишь немногие функции вроде MPI_Initialized.','MPI_Init орындау ортасын инициализациялайды; оған дейін MPI_Initialized сияқты санаулы функцияларға ғана рұқсат етіледі.']},
+{m:0,q:['Что означает модель SPMD?','SPMD моделі нені білдіреді?'],o:[['Одна программа запускается в нескольких экземплярах и обрабатывает разные данные','Бір бағдарлама бірнеше данада іске қосылып, әртүрлі деректерді өңдейді'],['Каждый процесс выполняет свою отдельную программу','Әр процесс өзінің жеке бағдарламасын орындайды'],['Все процессы работают с общей памятью','Барлық процестер ортақ жадымен жұмыс істейді'],['Программа выполняется только на графическом процессоре','Бағдарлама тек графикалық процессорда орындалады']],a:0,e:['Single Program, Multiple Data: код один, а ветвление по рангу определяет, что делает каждый процесс.','Single Program, Multiple Data: код біреу, ал рангке қарай тармақталу әр процестің не істейтінін анықтайды.']},
+{m:1,q:['Какие значения принимает ранг в коммуникаторе из p процессов?','p процестен тұратын коммуникаторда ранг қандай мәндер қабылдайды?'],o:['0 … p − 1','1 … p','0 … p','−1 … p − 1'],a:0,e:['Ранги нумеруются с нуля, поэтому последний процесс имеет ранг p − 1.','Рангтер нөлден бастап нөмірленеді, сондықтан соңғы процестің рангі p − 1.']},
+{m:2,q:['Какой коммуникатор содержит все запущенные процессы?','Қай коммуникатор барлық іске қосылған процестерді қамтиды?'],o:['<code>MPI_COMM_WORLD</code>','<code>MPI_COMM_SELF</code>','<code>MPI_COMM_ALL</code>','<code>MPI_GROUP_WORLD</code>'],a:0,e:['MPI_COMM_SELF содержит только сам процесс, а MPI_COMM_ALL и MPI_GROUP_WORLD в стандарте нет.','MPI_COMM_SELF тек процестің өзін қамтиды, ал MPI_COMM_ALL мен MPI_GROUP_WORLD стандартта жоқ.']},
+{m:2,q:['Какой аргумент <code>MPI_Comm_split</code> определяет, в какой новый коммуникатор попадёт процесс?','<code>MPI_Comm_split</code>-тің қай аргументі процестің қай жаңа коммуникаторға түсетінін анықтайды?'],o:['<code>color</code>','<code>key</code>','<code>tag</code>','<code>root</code>'],a:0,e:['Процессы с одинаковым color объединяются; key лишь задаёт порядок рангов внутри новой группы.','color мәні бірдей процестер біріктіріледі; key тек жаңа топтағы рангтер ретін береді.']},
+{m:3,q:['Какая константа позволяет принять сообщение от любого отправителя?','Қай тұрақты кез келген жіберушіден хабарлама қабылдауға мүмкіндік береді?'],o:['<code>MPI_ANY_SOURCE</code>','<code>MPI_ANY_TAG</code>','<code>MPI_SOURCE_ALL</code>','<code>MPI_PROC_NULL</code>'],a:0,e:['MPI_ANY_TAG — для любого тега, а MPI_PROC_NULL — «пустой» процесс, обмен с которым ничего не делает.','MPI_ANY_TAG — кез келген тег үшін, ал MPI_PROC_NULL — «бос» процесс, онымен алмасу ештеңе істемейді.']},
+{m:3,q:['Как узнать, сколько элементов фактически пришло в <code>MPI_Recv</code>?','<code>MPI_Recv</code>-ке нақты қанша элемент келгенін қалай білуге болады?'],o:[['Вызвать MPI_Get_count для полученного статуса','Алынған статус үшін MPI_Get_count шақыру'],['Прочитать аргумент count у MPI_Recv','MPI_Recv-тің count аргументін оқу'],['Вызвать MPI_Comm_size','MPI_Comm_size шақыру'],['Это невозможно','Бұл мүмкін емес']],a:0,e:['count в MPI_Recv — лишь максимальный размер буфера. Реальную длину сообщения возвращает MPI_Get_count.','MPI_Recv-тегі count — тек буфердің ең үлкен өлшемі. Хабарламаның нақты ұзындығын MPI_Get_count қайтарады.']},
+{m:3,q:['Процесс A дважды отправляет сообщения процессу B в одном коммуникаторе с одним тегом. В каком порядке B их получит?','A процесі B процесіне бір коммуникаторда бір тегпен екі рет хабарлама жібереді. B оларды қандай ретпен алады?'],o:[['В порядке отправки','Жіберу ретімен'],['В случайном порядке','Кездейсоқ ретпен'],['Сначала более короткое','Алдымен қысқасын'],['Зависит от числа процессов','Процестер санына байланысты']],a:0,e:['MPI гарантирует, что сообщения между одной парой процессов не обгоняют друг друга, если подходят под одни и те же параметры приёма.','MPI бір жұп процесс арасындағы хабарламалар бірдей қабылдау параметрлеріне сәйкес келсе, бірін-бірі басып озбайтынына кепілдік береді.']},
+{m:4,q:['Два процесса сначала вызывают <code>MPI_Recv</code> друг от друга, а затем <code>MPI_Send</code>. Что произойдёт?','Екі процесс алдымен бір-бірінен <code>MPI_Recv</code>, содан кейін <code>MPI_Send</code> шақырады. Не болады?'],o:[['Взаимоблокировка: оба процесса будут ждать вечно','Өзара бұғаттау: екі процесс те мәңгі күтеді'],['Программа отработает корректно','Бағдарлама дұрыс орындалады'],['Ошибка компиляции','Компиляция қатесі'],['Результат зависит от размера сообщения','Нәтиже хабарлама өлшеміне байланысты']],a:0,e:['Блокирующий MPI_Recv не вернётся, пока не придёт сообщение, а отправить его некому — оба процесса ждут.','Бұғаттайтын MPI_Recv хабарлама келмейінше қайтпайды, ал оны жіберетін ешкім жоқ — екі процесс те күтеді.']},
+{m:4,q:['Какая функция совмещает отправку и приём и помогает избежать взаимоблокировки?','Қай функция жіберу мен қабылдауды біріктіріп, өзара бұғаттауды болдырмауға көмектеседі?'],o:['<code>MPI_Sendrecv</code>','<code>MPI_Bsend</code>','<code>MPI_Ssend</code>','<code>MPI_Bcast</code>'],a:0,e:['MPI_Sendrecv выполняет обе операции, а реализация сама избегает циклического ожидания.','MPI_Sendrecv екі операцияны да орындайды, ал іске асыру циклдік күтуді өзі болдырмайды.']},
+{m:4,q:['Чем <code>MPI_Ssend</code> отличается от <code>MPI_Send</code>?','<code>MPI_Ssend</code>-тің <code>MPI_Send</code>-тен айырмашылығы неде?'],o:[['Завершается только после того, как получатель начал приём','Алушы қабылдауды бастағаннан кейін ғана аяқталады'],['Никогда не блокируется','Ешқашан бұғатталмайды'],['Отправляет сообщение всем процессам','Хабарламаны барлық процестерге жібереді'],['Работает только с MPI_INT','Тек MPI_INT-пен жұмыс істейді']],a:0,e:['Синхронный режим гарантирует, что приём начат. Программа, корректная с MPI_Ssend, не зависит от буферизации.','Синхронды режим қабылдаудың басталғанына кепілдік береді. MPI_Ssend-пен дұрыс жұмыс істейтін бағдарлама буферлеуге тәуелді емес.']},
+{m:5,q:['Когда можно изменять буфер, переданный в <code>MPI_Isend</code>?','<code>MPI_Isend</code>-ке берілген буферді қашан өзгертуге болады?'],o:[['После завершения через MPI_Wait или успешный MPI_Test','MPI_Wait немесе сәтті MPI_Test арқылы аяқталғаннан кейін'],['Сразу после возврата из MPI_Isend','MPI_Isend-тен қайтқаннан кейін бірден'],['После вызова MPI_Barrier','MPI_Barrier шақырылғаннан кейін'],['Никогда','Ешқашан']],a:0,e:['MPI_Isend лишь начинает передачу. Пока запрос не завершён, данные могут ещё читаться из буфера.','MPI_Isend тек жіберуді бастайды. Сұраныс аяқталмайынша, деректер буферден әлі оқылуы мүмкін.']},
+{m:5,q:['Зачем нужны неблокирующие операции?','Бұғаттамайтын операциялар не үшін қажет?'],o:[['Чтобы совмещать вычисления с передачей данных','Есептеулерді деректер жіберумен қабаттастыру үшін'],['Чтобы не вызывать MPI_Init','MPI_Init шақырмау үшін'],['Чтобы передавать данные без коммуникатора','Деректерді коммуникаторсыз жіберу үшін'],['Чтобы гарантировать порядок вывода','Шығыс ретіне кепілдік беру үшін']],a:0,e:['Пока сообщения в пути, процесс считает свою часть задачи, а затем ждёт завершения через MPI_Wait.','Хабарламалар жолда болғанда процесс өз бөлігін есептейді, содан кейін MPI_Wait арқылы аяқталуын күтеді.']},
+{m:6,q:['Что делает <code>MPI_Bcast</code>?','<code>MPI_Bcast</code> не істейді?'],o:[['Делит массив корня на части','Түбір массивін бөліктерге бөледі'],['Собирает данные всех процессов на корне','Барлық процестердің деректерін түбірге жинайды'],['Рассылает одни и те же данные от корня всем процессам','Түбірден барлық процестерге бірдей деректерді таратады'],['Вычисляет сумму значений','Мәндердің қосындысын есептейді']],a:2,e:['Bcast копирует буфер корня во все процессы. Делит данные Scatter, собирает Gather, суммирует Reduce.','Bcast түбір буферін барлық процестерге көшіреді. Деректерді Scatter бөледі, Gather жинайды, Reduce қосады.']},
+{m:6,q:['Чем <code>MPI_Allreduce</code> отличается от <code>MPI_Reduce</code>?','<code>MPI_Allreduce</code>-тің <code>MPI_Reduce</code>-тен айырмашылығы неде?'],o:[['Результат получают все процессы','Нәтижені барлық процестер алады'],['Не требует операции редукции','Редукция операциясын қажет етпейді'],['Работает только для двух процессов','Тек екі процесс үшін жұмыс істейді'],['Вызывается только корнем','Тек түбір шақырады']],a:0,e:['Allreduce эквивалентен Reduce с последующим Bcast, поэтому у него нет аргумента root.','Allreduce Reduce-тен кейінгі Bcast-қа эквивалентті, сондықтан онда root аргументі жоқ.']},
+{m:6,q:['Сколько шагов нужно рассылке по двоичному дереву на 8 процессах?','8 процесте екілік ағаш бойынша таратуға неше қадам керек?'],o:['1','3','7','8'],a:1,e:['На каждом шаге число процессов с данными удваивается: 1 → 2 → 4 → 8, то есть log₂8 = 3 шага. Это видно в симуляторе.','Әр қадамда деректері бар процестер саны екі есе артады: 1 → 2 → 4 → 8, яғни log₂8 = 3 қадам. Мұны симуляторда көруге болады.']},
+{m:6,q:['Что произойдёт, если один процесс не вызовет коллективную операцию, которую вызвали остальные?','Бір процесс басқалар шақырған ұжымдық операцияны шақырмаса, не болады?'],o:[['Остальные процессы могут зависнуть','Қалған процестер қатып қалуы мүмкін'],['MPI пропустит этот процесс','MPI бұл процесті өткізіп жібереді'],['Операция выполнится без его данных','Операция оның деректерінсіз орындалады'],['Ничего, это допустимо','Ештеңе, бұл рұқсат етілген']],a:0,e:['Коллективные операции должны вызываться всеми процессами коммуникатора в одном порядке — иначе программа некорректна.','Ұжымдық операцияларды коммуникатордың барлық процестері бірдей ретпен шақыруы тиіс — әйтпесе бағдарлама дұрыс емес.']},
+{m:7,q:['Последовательная часть программы — 10 %. Каков предел ускорения по закону Амдала?','Бағдарламаның тізбекті бөлігі — 10 %. Амдал заңы бойынша үдеудің шегі қандай?'],o:['10','90','100',['Не ограничено','Шектелмеген']],a:0,e:['Предел равен 1 / f = 1 / 0,1 = 10, сколько бы процессов ни было.','Шек 1 / f = 1 / 0,1 = 10-ға тең, процестер саны қанша болса да.']},
+{m:7,q:['На 8 процессах получено ускорение 6. Какова эффективность?','8 процесте 6 есе үдеу алынды. Тиімділік қандай?'],o:['0,75','1,33','48','0,6'],a:0,e:['E = S / p = 6 / 8 = 0,75, то есть 75 % ресурсов используется полезно.','E = S / p = 6 / 8 = 0,75, яғни ресурстардың 75 %-ы пайдалы қолданылады.']}
+];
+
+/* ---------- tasks ---------- */
+const GROUPS=[['Ранги процессов','Процестер рангтері'],['Передача сообщений','Хабарламалар жіберу'],['Коллективные операции','Ұжымдық операциялар'],['Комбинированные','Аралас тапсырмалар']];
+const TASKS=[
+{g:0,l:1,t:['Привет от каждого процесса','Әр процестен сәлем'],d:['Каждый процесс выводит свой ранг и общее число процессов. Процесс с рангом 0 дополнительно выводит строку «master».','Әр процесс өз рангін және процестердің жалпы санын шығарады. Рангі 0 процесс қосымша «master» жолын шығарады.'],h:['Используйте MPI_Comm_rank и MPI_Comm_size, затем условие if (rank == 0).','MPI_Comm_rank пен MPI_Comm_size қолданып, содан кейін if (rank == 0) шартын жазыңыз.'],c:`int rank, size;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+printf("rank %d of %d\\n", rank, size);
+if (rank == 0) printf("master\\n");
+
+MPI_Finalize();`},
+{g:0,l:1,t:['Чётные и нечётные','Жұп және тақ'],d:['Процессы с чётным рангом выводят квадрат своего ранга, с нечётным — куб.','Рангі жұп процестер өз рангінің квадратын, ал тақ процестер кубын шығарады.'],h:['Проверьте остаток rank % 2.','rank % 2 қалдығын тексеріңіз.'],c:`int rank;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+if (rank % 2 == 0)
+    printf("rank %d: %d\\n", rank, rank * rank);
+else
+    printf("rank %d: %d\\n", rank, rank * rank * rank);
+
+MPI_Finalize();`},
+{g:0,l:2,t:['Замер времени','Уақытты өлшеу'],d:['Каждый процесс суммирует числа от 1 до 10⁷ · (rank + 1) и выводит время работы цикла, измеренное через MPI_Wtime.','Әр процесс 1-ден 10⁷ · (rank + 1)-ге дейінгі сандарды қосып, MPI_Wtime арқылы өлшенген цикл уақытын шығарады.'],h:['Сохраните MPI_Wtime() до и после цикла и выведите разность.','Циклге дейін және кейін MPI_Wtime() мәнін сақтап, айырмасын шығарыңыз.'],c:`int rank;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+long long n = 10000000LL * (rank + 1), sum = 0;
+double t0 = MPI_Wtime();
+for (long long i = 1; i <= n; i++) sum += i;
+double t1 = MPI_Wtime();
+
+printf("rank %d: sum = %lld, time = %.4f s\\n", rank, sum, t1 - t0);
+MPI_Finalize();`},
+{g:1,l:1,t:['Передача массива','Массивті жіберу'],d:['Процесс 0 отправляет процессу 1 массив из пяти целых чисел. Процесс 1 принимает его и выводит.','0-процесс 1-процеске бес бүтін саннан тұратын массив жібереді. 1-процесс оны қабылдап, шығарады.'],h:['Отправка: MPI_Send(a, 5, MPI_INT, 1, 0, …). Приём: MPI_Recv с источником 0.','Жіберу: MPI_Send(a, 5, MPI_INT, 1, 0, …). Қабылдау: көзі 0 болатын MPI_Recv.'],c:`int rank, a[5];
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+if (rank == 0) {
+    for (int i = 0; i < 5; i++) a[i] = (i + 1) * 10;
+    MPI_Send(a, 5, MPI_INT, 1, 0, MPI_COMM_WORLD);
+} else if (rank == 1) {
+    MPI_Recv(a, 5, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for (int i = 0; i < 5; i++) printf("%d ", a[i]);
+    printf("\\n");
+}
+MPI_Finalize();`},
+{g:1,l:2,t:['Эстафета по кольцу','Сақина бойымен эстафета'],d:['Процесс 0 создаёт токен со значением 0 и отправляет его процессу 1. Каждый следующий процесс прибавляет к токену свой ранг и передаёт дальше, последний — снова процессу 0. Процесс 0 выводит результат и проверяет, что он равен p(p − 1)/2.','0-процесс мәні 0 болатын токен жасап, оны 1-процеске жібереді. Әрбір келесі процесс токенге өз рангін қосып, әрі қарай береді, соңғысы — қайтадан 0-процеске. 0-процесс нәтижені шығарып, оның p(p − 1)/2-ге тең екенін тексереді.'],h:['Сосед справа: (rank + 1) % size, слева: (rank − 1 + size) % size. Процесс 0 сначала отправляет, остальные сначала принимают.','Оң жақтағы көрші: (rank + 1) % size, сол жақтағы: (rank − 1 + size) % size. 0-процесс алдымен жібереді, қалғандары алдымен қабылдайды.'],c:`int rank, size, token;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+int next = (rank + 1) % size;
+int prev = (rank - 1 + size) % size;
+
+if (rank == 0) {
+    token = 0;
+    MPI_Send(&token, 1, MPI_INT, next, 0, MPI_COMM_WORLD);
+    MPI_Recv(&token, 1, MPI_INT, prev, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    printf("token = %d, expected %d\\n", token, size * (size - 1) / 2);
+} else {
+    MPI_Recv(&token, 1, MPI_INT, prev, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    token += rank;
+    MPI_Send(&token, 1, MPI_INT, next, 0, MPI_COMM_WORLD);
+}
+MPI_Finalize();`,sim:'ring'},
+{g:1,l:2,t:['Приём от любого отправителя','Кез келген жіберушіден қабылдау'],d:['Все процессы с рангом больше 0 отправляют процессу 0 число rank · 10. Процесс 0 принимает сообщения с MPI_ANY_SOURCE и выводит, от кого и что пришло, в порядке поступления.','Рангі 0-ден үлкен барлық процестер 0-процеске rank · 10 санын жібереді. 0-процесс хабарламаларды MPI_ANY_SOURCE арқылы қабылдап, кімнен не келгенін келу ретімен шығарады.'],h:['Отправителя можно узнать из status.MPI_SOURCE.','Жіберушіні status.MPI_SOURCE арқылы білуге болады.'],c:`int rank, size;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+if (rank == 0) {
+    for (int i = 1; i < size; i++) {
+        int x;
+        MPI_Status st;
+        MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &st);
+        printf("from %d: %d\\n", st.MPI_SOURCE, x);
+    }
+} else {
+    int x = rank * 10;
+    MPI_Send(&x, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+}
+MPI_Finalize();`},
+{g:1,l:3,t:['Сдвиг по кольцу без deadlock','Deadlock-сыз сақиналық ығысу'],d:['Каждый процесс одновременно отправляет своё значение правому соседу и получает значение от левого. Решите задачу через MPI_Sendrecv так, чтобы программа работала при любом числе процессов.','Әр процесс өз мәнін оң жақтағы көршісіне жіберіп, сол жақтағы көршісінен мән алады. Бағдарлама кез келген процестер санында жұмыс істейтіндей етіп, есепті MPI_Sendrecv арқылы шешіңіз.'],h:['Один вызов MPI_Sendrecv(&mine, …, right, …, &got, …, left, …) заменяет пару Send и Recv.','Бір MPI_Sendrecv(&mine, …, right, …, &got, …, left, …) шақыруы Send пен Recv жұбын алмастырады.'],c:`int rank, size;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+int right = (rank + 1) % size;
+int left  = (rank - 1 + size) % size;
+int mine = rank * rank, got;
+
+MPI_Sendrecv(&mine, 1, MPI_INT, right, 0,
+             &got,  1, MPI_INT, left,  0,
+             MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+printf("rank %d got %d from %d\\n", rank, got, left);
+MPI_Finalize();`},
+{g:2,l:1,t:['Рассылка параметра','Параметрді тарату'],d:['Процесс 0 задаёт число n = 100. Передайте его всем процессам через MPI_Bcast; каждый процесс выводит полученное значение.','0-процесс n = 100 санын береді. Оны MPI_Bcast арқылы барлық процестерге жіберіңіз; әр процесс алған мәнін шығарады.'],h:['MPI_Bcast вызывают все процессы, а не только корень.','MPI_Bcast-ты тек түбір емес, барлық процестер шақырады.'],c:`int rank, n = 0;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+if (rank == 0) n = 100;
+MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+printf("rank %d: n = %d\\n", rank, n);
+
+MPI_Finalize();`,sim:'bcast'},
+{g:2,l:2,t:['Сумма массива','Массив қосындысы'],d:['Процесс 0 создаёт массив из 4 · p чисел (1, 2, 3, …). Раздайте его поровну через MPI_Scatter, посчитайте локальные суммы и соберите общую сумму на процессе 0 через MPI_Reduce.','0-процесс 4 · p саннан (1, 2, 3, …) тұратын массив жасайды. Оны MPI_Scatter арқылы тең бөліп таратыңыз, жергілікті қосындыларды есептеп, жалпы қосындыны MPI_Reduce арқылы 0-процеске жинаңыз.'],h:['Каждый процесс получает 4 элемента. Проверка: сумма 1..N равна N(N + 1)/2.','Әр процесс 4 элемент алады. Тексеру: 1..N қосындысы N(N + 1)/2-ге тең.'],c:`int rank, size;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+const int K = 4;
+int *data = NULL, part[4];
+if (rank == 0) {
+    data = malloc(K * size * sizeof(int));
+    for (int i = 0; i < K * size; i++) data[i] = i + 1;
+}
+
+MPI_Scatter(data, K, MPI_INT, part, K, MPI_INT, 0, MPI_COMM_WORLD);
+
+int local = 0, total = 0;
+for (int i = 0; i < K; i++) local += part[i];
+MPI_Reduce(&local, &total, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+if (rank == 0) {
+    printf("sum = %d\\n", total);
+    free(data);
+}
+MPI_Finalize();`,sim:'reduce'},
+{g:2,l:3,t:['Максимум и его владелец','Максимум және оның иесі'],d:['Каждый процесс вычисляет число (rank · 37 + 11) % 50. Найдите глобальный максимум и ранг процесса, у которого он находится, одним вызовом MPI_Reduce с операцией MPI_MAXLOC.','Әр процесс (rank · 37 + 11) % 50 санын есептейді. Жаһандық максимумды және ол орналасқан процестің рангін MPI_MAXLOC операциясымен бір MPI_Reduce шақыруы арқылы табыңыз.'],h:['Используйте структуру { int value; int rank; } и тип MPI_2INT.','{ int value; int rank; } құрылымын және MPI_2INT типін қолданыңыз.'],c:`int rank;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+struct { int value; int rank; } in, out;
+in.value = (rank * 37 + 11) % 50;
+in.rank  = rank;
+
+MPI_Reduce(&in, &out, 1, MPI_2INT, MPI_MAXLOC, 0, MPI_COMM_WORLD);
+
+if (rank == 0)
+    printf("max = %d on rank %d\\n", out.value, out.rank);
+MPI_Finalize();`},
+{g:3,l:2,t:['Вычисление числа π','π санын есептеу'],d:['Вычислите π как интеграл функции 4 / (1 + x²) на отрезке [0, 1] методом средних прямоугольников. Процесс 0 рассылает число разбиений n, каждый процесс считает свои прямоугольники с шагом size, результаты суммируются на процессе 0.','π санын [0, 1] кесіндісіндегі 4 / (1 + x²) функциясының интегралы ретінде орта тіктөртбұрыштар әдісімен есептеңіз. 0-процесс бөліктер санын n таратады, әр процесс size қадамымен өз тіктөртбұрыштарын есептейді, нәтижелер 0-процесте қосылады.'],h:['Процесс rank обрабатывает индексы i = rank, rank + size, rank + 2 · size, …','rank процесі i = rank, rank + size, rank + 2 · size, … индекстерін өңдейді.'],c:`int rank, size, n = 0;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+if (rank == 0) n = 1000000;
+MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+double h = 1.0 / n, local = 0.0, pi = 0.0;
+for (int i = rank; i < n; i += size) {
+    double x = h * (i + 0.5);
+    local += 4.0 / (1.0 + x * x);
+}
+local *= h;
+
+MPI_Reduce(&local, &pi, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+if (rank == 0) printf("pi = %.12f\\n", pi);
+MPI_Finalize();`},
+{g:3,l:3,t:['Скалярное произведение','Скалярлық көбейтінді'],d:['Векторы a и b длины N = 8 · p создаются на процессе 0. Раздайте их через MPI_Scatter, вычислите частичные произведения и получите итог на всех процессах через MPI_Allreduce.','Ұзындығы N = 8 · p болатын a және b векторлары 0-процесте жасалады. Оларды MPI_Scatter арқылы таратып, ішінара көбейтінділерді есептеңіз және нәтижені MPI_Allreduce арқылы барлық процестерде алыңыз.'],h:['Нужны два вызова MPI_Scatter — для a и для b.','Екі MPI_Scatter шақыруы қажет — a үшін және b үшін.'],c:`int rank, size;
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+const int K = 8;
+int N = K * size;
+double *a = NULL, *b = NULL, pa[8], pb[8];
+if (rank == 0) {
+    a = malloc(N * sizeof(double));
+    b = malloc(N * sizeof(double));
+    for (int i = 0; i < N; i++) { a[i] = i; b[i] = 1.0; }
+}
+
+MPI_Scatter(a, K, MPI_DOUBLE, pa, K, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+MPI_Scatter(b, K, MPI_DOUBLE, pb, K, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+double local = 0.0, dot;
+for (int i = 0; i < K; i++) local += pa[i] * pb[i];
+MPI_Allreduce(&local, &dot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+printf("rank %d: dot = %.1f\\n", rank, dot);
+if (rank == 0) { free(a); free(b); }
+MPI_Finalize();`,sim:'allreduce'}
+];
+
+/* ---------- install ---------- */
+const INSTALL=[
+{n:'Windows',b:[
+ {p:['Скачайте Microsoft MPI с официального сайта Microsoft и установите оба файла: msmpisetup.exe (среда выполнения) и msmpisdk.msi (заголовки и библиотеки).','Microsoft MPI-ды Microsoft-тың ресми сайтынан жүктеп, екі файлды да орнатыңыз: msmpisetup.exe (орындау ортасы) және msmpisdk.msi (тақырыптар мен кітапханалар).']},
+ {p:['В Visual Studio добавьте $(MSMPI_INC) в каталоги включаемых файлов, $(MSMPI_LIB64) — в каталоги библиотек, а msmpi.lib — в дополнительные зависимости компоновщика.','Visual Studio-да $(MSMPI_INC) жолын қосылатын файлдар каталогтарына, $(MSMPI_LIB64) жолын кітапханалар каталогтарына, ал msmpi.lib-ті құрастырушының қосымша тәуелділіктеріне қосыңыз.']},
+ {code:`mpiexec -n 4 program.exe`,lang:'sh',file:'cmd'}]},
+{n:'Linux',b:[
+ {p:['Установите Open MPI или MPICH из репозитория дистрибутива.','Open MPI немесе MPICH-ты дистрибутив репозиторийінен орнатыңыз.']},
+ {code:`# Ubuntu / Debian
+sudo apt update
+sudo apt install openmpi-bin libopenmpi-dev
+
+# version check
+mpicc --version
+mpirun --version`,lang:'sh',file:'terminal'},
+ {code:`mpicc hello.c -o hello
+mpirun -np 4 ./hello`,lang:'sh',file:'terminal'},
+ {p:['Если процессов больше, чем ядер, Open MPI потребует флаг --oversubscribe.','Егер процестер ядролардан көп болса, Open MPI --oversubscribe жалаушасын талап етеді.']}]},
+{n:'macOS',b:[
+ {p:['Проще всего установить Open MPI через Homebrew.','Open MPI-ды Homebrew арқылы орнату ең оңай.']},
+ {code:`brew install open-mpi
+mpicc hello.c -o hello
+mpirun -np 4 ./hello`,lang:'sh',file:'terminal'}]},
+{n:'Python',b:[
+ {p:['Пакет mpi4py даёт доступ к MPI из Python. Для него нужна установленная реализация MPI.','mpi4py пакеті Python-нан MPI-ға қол жеткізуге мүмкіндік береді. Ол үшін орнатылған MPI іске асыруы қажет.']},
+ {code:`pip install mpi4py`,lang:'sh',file:'terminal'},
+ {code:`from mpi4py import MPI
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+
+total = comm.allreduce(rank, op=MPI.SUM)
+print(f"rank {rank} of {size}, sum of ranks = {total}")`,lang:'py',file:'hello.py'},
+ {code:`mpiexec -n 4 python hello.py`,lang:'sh',file:'terminal'}]}
+];
+
+/* ---------- syntax highlight ---------- */
+const KW=new Set('int char double float long void return if else for while const struct sizeof unsigned static NULL from import def in as print True False None'.split(' '));
+const CMD=new Set('sudo apt brew pip mpicc mpirun mpiexec python'.split(' '));
+function hl(code,lang){
+  if(lang==='out') return esc(code);
+  const rules=lang==='c'?[['com',/\/\/[^\n]*|\/\*[\s\S]*?\*\//],['str',/"(?:\\.|[^"\\\n])*"/],['pp',/#\s*include[^\n]*/],['num',/\b\d+(?:\.\d+)?(?:LL)?\b/],['id',/[A-Za-z_]\w*/]]
+    :[['com',/#[^\n]*/],['str',/"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/],['num',/\b\d+(?:\.\d+)?\b/],['id',/[A-Za-z_]\w*/]];
+  const re=new RegExp(rules.map(r=>'('+r[1].source+')').join('|'),'g');
+  let out='',last=0,m;
+  while((m=re.exec(code))){
+    out+=esc(code.slice(last,m.index));
+    let j=1;while(m[j]===undefined)j++;
+    let cls=rules[j-1][0],tok=m[0];
+    if(cls==='id'){cls=/^MPI(_|$)/.test(tok)?'fn':KW.has(tok)?'kw':(lang==='sh'&&CMD.has(tok))?'fn':''}
+    out+=cls?`<span class="tk-${cls}">${esc(tok)}</span>`:esc(tok);
+    last=re.lastIndex;
+  }
+  return out+esc(code.slice(last));
+}
+function codeBlock(code,lang,file){
+  return `<div class="code"><div class="bar"><span>${esc(file||lang)}</span><button class="cp" data-copy>${ICON.copy}<span>${T('copy')}</span></button></div><pre>${hl(code,lang)}</pre></div>`;
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-copy]');if(!b)return;
+  const txt=b.closest('.code').querySelector('pre').textContent;
+  let ok=false;
+  try{await navigator.clipboard.writeText(txt);ok=true}catch(err){
+    try{const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');ta.remove()}catch(e2){}
+  }
+  const s=b.querySelector('span');s.textContent=ok?T('copied'):'—';setTimeout(()=>{s.textContent=T('copy')},1600);
+});
+
+/* ---------- simulator engine ---------- */
+const VALS=[3,7,2,9,4,6,1,8];
+const OPS=[
+ {id:'sendrecv',name:'MPI_Send / Recv',root:false,d:['Пинг-понг: процесс 0 отправляет массив процессу 1, тот удваивает значения и возвращает их обратно.','Пинг-понг: 0-процесс массивті 1-процеске жібереді, ол мәндерді екі есе арттырып, кері қайтарады.'],
+  code:()=>`int data[3] = {5, 1, 4};
+if (rank == 0) {
+    MPI_Send(data, 3, MPI_INT, 1, 0, MPI_COMM_WORLD);
+    MPI_Recv(data, 3, MPI_INT, 1, 0, MPI_COMM_WORLD,
+             MPI_STATUS_IGNORE);
+} else if (rank == 1) {
+    MPI_Recv(data, 3, MPI_INT, 0, 0, MPI_COMM_WORLD,
+             MPI_STATUS_IGNORE);
+    for (int i = 0; i < 3; i++) data[i] *= 2;
+    MPI_Send(data, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
+}`},
+ {id:'ring',name:'Ring (token)',root:false,d:['Токен проходит по кольцу 0 → 1 → … → 0, каждый процесс прибавляет к нему свой ранг. В конце процесс 0 получает сумму всех рангов p(p − 1)/2.','Токен сақина бойымен 0 → 1 → … → 0 өтеді, әр процесс оған өз рангін қосады. Соңында 0-процесс барлық рангтердің қосындысын p(p − 1)/2 алады.'],
+  code:()=>`int next = (rank + 1) % size;
+int prev = (rank - 1 + size) % size;
+if (rank == 0) {
+    token = 0;
+    MPI_Send(&token, 1, MPI_INT, next, 0, MPI_COMM_WORLD);
+    MPI_Recv(&token, 1, MPI_INT, prev, 0, MPI_COMM_WORLD,
+             MPI_STATUS_IGNORE);
+} else {
+    MPI_Recv(&token, 1, MPI_INT, prev, 0, MPI_COMM_WORLD,
+             MPI_STATUS_IGNORE);
+    token += rank;
+    MPI_Send(&token, 1, MPI_INT, next, 0, MPI_COMM_WORLD);
+}`},
+ {id:'bcast',name:'MPI_Bcast',root:true,d:['Корень рассылает одно значение всем процессам. Показан алгоритм двоичного дерева: на каждом шаге число процессов с данными удваивается, поэтому нужно ⌈log₂p⌉ шагов.','Түбір бір мәнді барлық процестерге таратады. Екілік ағаш алгоритмі көрсетілген: әр қадамда деректері бар процестер саны екі есе артады, сондықтан ⌈log₂p⌉ қадам қажет.'],
+  code:(np,r)=>`int value = 0;
+if (rank == ${r}) value = 42;
+MPI_Bcast(&value, 1, MPI_INT, ${r}, MPI_COMM_WORLD);`},
+ {id:'scatter',name:'MPI_Scatter',root:true,d:['Корень делит массив на равные части и отправляет i-ю часть процессу с рангом i. Свою часть корень оставляет себе.','Түбір массивті тең бөліктерге бөліп, i-бөлікті рангі i болатын процеске жібереді. Өз бөлігін түбір өзінде қалдырады.'],
+  code:(np,r)=>`int send[${np}] = {${VALS.slice(0,np).join(', ')}};
+int part;
+MPI_Scatter(send, 1, MPI_INT, &part, 1, MPI_INT,
+            ${r}, MPI_COMM_WORLD);`},
+ {id:'gather',name:'MPI_Gather',root:true,d:['Операция, обратная Scatter: каждый процесс отправляет своё значение корню, и тот собирает их в массив в порядке рангов.','Scatter-ге кері операция: әр процесс өз мәнін түбірге жібереді, ал ол оларды рангтер ретімен массивке жинайды.'],
+  code:(np,r)=>`int mine = values[rank];
+int all[${np}];
+MPI_Gather(&mine, 1, MPI_INT, all, 1, MPI_INT,
+           ${r}, MPI_COMM_WORLD);`},
+ {id:'reduce',name:'MPI_Reduce',root:true,d:['Значения всех процессов объединяются операцией MPI_SUM, результат получает только корень. Редукция идёт по дереву: на каждом шаге половина активных процессов передаёт частичные суммы и выбывает.','Барлық процестердің мәндері MPI_SUM операциясымен біріктіріледі, нәтижені тек түбір алады. Редукция ағаш бойынша жүреді: әр қадамда белсенді процестердің жартысы ішінара қосындыларды беріп, шығып қалады.'],
+  code:(np,r)=>`int mine = values[rank], sum = 0;
+MPI_Reduce(&mine, &sum, 1, MPI_INT, MPI_SUM,
+           ${r}, MPI_COMM_WORLD);`},
+ {id:'allreduce',name:'MPI_Allreduce',root:false,d:['Результат редукции нужен всем. Здесь он вычисляется как Reduce на процесс 0 и затем Bcast; реальные реализации часто используют рекурсивное удвоение.','Редукция нәтижесі барлығына қажет. Мұнда ол 0-процеске Reduce, содан кейін Bcast ретінде есептеледі; нақты іске асырулар жиі рекурсивті екі еселеуді қолданады.'],
+  code:()=>`int mine = values[rank], sum;
+MPI_Allreduce(&mine, &sum, 1, MPI_INT, MPI_SUM,
+              MPI_COMM_WORLD);`},
+ {id:'allgather',name:'MPI_Allgather',root:false,d:['Каждый процесс получает значения всех остальных. Кольцевой алгоритм: за p − 1 шагов каждый передаёт соседу блок, полученный на предыдущем шаге.','Әр процесс басқалардың барлық мәндерін алады. Сақиналық алгоритм: p − 1 қадамда әрқайсысы көршісіне алдыңғы қадамда алған блогын береді.'],
+  code:(np)=>`int mine = values[rank];
+int all[${np}];
+MPI_Allgather(&mine, 1, MPI_INT, all, 1, MPI_INT,
+              MPI_COMM_WORLD);`},
+ {id:'barrier',name:'MPI_Barrier',root:true,d:['Синхронизация: ни один процесс не выйдет из MPI_Barrier, пока в него не вошли все. Показана простая схема через один процесс-координатор.','Синхрондау: барлығы кірмейінше, бірде-бір процесс MPI_Barrier-ден шықпайды. Бір үйлестіруші процесс арқылы қарапайым схема көрсетілген.'],
+  code:()=>`do_work();
+MPI_Barrier(MPI_COMM_WORLD);
+/* all processes continue together */
+next_phase();`}
+];
+const OPMAP=Object.fromEntries(OPS.map(o=>[o.id,o]));
+
+function plan(op,np,root){
+  const s0={v:Array(np).fill(null),dim:Array(np).fill(false)};
+  const P=[];const abs=r=>(r+root)%np;
+  const add=(msgs,apply)=>P.push({msgs,apply});
+  const reduceTree=(rt,base)=>{
+    const acc=base.slice();
+    for(let mask=1;mask<np;mask<<=1){
+      const msgs=[],upd=[];
+      for(let r=0;r<np;r++){
+        if((r&(2*mask-1))===mask){const f=(r+rt)%np,t=(r-mask+rt)%np;msgs.push({f,t,l:String(acc[f])});upd.push([t,acc[t]+acc[f],f])}
+      }
+      upd.forEach(([t,v])=>acc[t]=v);
+      if(msgs.length) add(msgs,s=>upd.forEach(([t,v,f])=>{s.v[t]=v;s.dim[f]=true}));
+    }
+    return acc[rt];
+  };
+  const bcastTree=(rt,val)=>{
+    for(let mask=1;mask<np;mask<<=1){
+      const msgs=[];
+      for(let r=0;r<mask;r++) if(r+mask<np) msgs.push({f:(r+rt)%np,t:(r+mask+rt)%np,l:String(val)});
+      add(msgs,s=>msgs.forEach(m=>{s.v[m.t]=val;s.dim[m.t]=false}));
+    }
+  };
+  switch(op){
+    case 'sendrecv':
+      s0.v[0]=[5,1,4];
+      add([{f:0,t:1,l:'[5,1,4]'}],s=>{s.v[1]=[10,2,8]});
+      add([{f:1,t:0,l:'[10,2,8]'}],s=>{s.v[0]=[10,2,8]});
+      break;
+    case 'ring':{
+      s0.v[0]=0;let tok=0;
+      for(let k=0;k<np;k++){const f=k,t=(k+1)%np,val=tok,nt=t===0?tok:tok+t;add([{f,t,l:String(val)}],s=>{s.v[t]=nt});tok=nt}
+      break;}
+    case 'bcast': s0.v[root]=42; bcastTree(root,42); break;
+    case 'scatter':{
+      s0.v[root]=VALS.slice(0,np);const msgs=[];
+      for(let i=0;i<np;i++) if(i!==root) msgs.push({f:root,t:i,l:String(VALS[i])});
+      add(msgs,s=>{for(let i=0;i<np;i++) s.v[i]=VALS[i]});break;}
+    case 'gather':{
+      for(let i=0;i<np;i++) s0.v[i]=VALS[i];const msgs=[];
+      for(let i=0;i<np;i++) if(i!==root) msgs.push({f:i,t:root,l:String(VALS[i])});
+      add(msgs,s=>{s.v[root]=VALS.slice(0,np)});break;}
+    case 'reduce':
+      for(let i=0;i<np;i++) s0.v[i]=VALS[i];
+      reduceTree(root,VALS.slice(0,np));break;
+    case 'allreduce':{
+      for(let i=0;i<np;i++) s0.v[i]=VALS[i];
+      const tot=reduceTree(0,VALS.slice(0,np));bcastTree(0,tot);break;}
+    case 'allgather':{
+      for(let i=0;i<np;i++){s0.v[i]=Array(np).fill(null);s0.v[i][i]=VALS[i]}
+      for(let k=0;k<np-1;k++){
+        const msgs=[];
+        for(let i=0;i<np;i++){const b=(i-k+np)%np;msgs.push({f:i,t:(i+1)%np,l:String(VALS[b]),b})}
+        add(msgs,s=>msgs.forEach(m=>{s.v[m.t][m.b]=VALS[m.b]}));
+      }
+      break;}
+    case 'barrier':{
+      s0.v.fill('@run');const m1=[],m2=[];
+      for(let i=0;i<np;i++) if(i!==root){m1.push({f:i,t:root,l:'ready'});m2.push({f:root,t:i,l:'go'})}
+      add(m1,s=>s.v.fill('@wait'));add(m2,s=>s.v.fill('@go'));break;}
+  }
+  const clone=s=>({v:s.v.map(x=>Array.isArray(x)?x.slice():x),dim:s.dim.slice()});
+  const states=[s0];
+  P.forEach(p=>{const s=clone(states[states.length-1]);p.apply(s);states.push(s)});
+  return {phases:P,states};
+}
+const fmt=v=>v==null?'—':Array.isArray(v)?'['+v.map(x=>x==null?'·':x).join(',')+']':(typeof v==='string'&&v[0]==='@')?T('v_'+v.slice(1)):String(v);
+const NS='http://www.w3.org/2000/svg';
+const mk=(tag,attrs,parent)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e};
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+
+class Sim{
+  constructor(svg,o){Object.assign(this,{W:640,H:600,R:200,off:56,speed:1,cur:0,tok:0,onUpdate:()=>{}},o);this.svg=svg;svg.setAttribute('viewBox',`0 0 ${this.W} ${this.H}`)}
+  load(op,np,root){this.cancel();Object.assign(this,{op,np,root:Math.min(root,np-1)});const p=plan(op,np,this.root);this.phases=p.phases;this.states=p.states;this.cur=0;this.draw();this.render();this.emit()}
+  draw(){
+    const {W,H,R,np}=this,cx=W/2,cy=H/2;this.svg.innerHTML='';
+    this.pos=[...Array(np)].map((_,i)=>{const a=-Math.PI/2+2*Math.PI*i/np;return{x:cx+R*Math.cos(a),y:cy+R*Math.sin(a),ux:Math.cos(a),uy:Math.sin(a)}});
+    mk('circle',{class:'orbit',cx,cy,r:R},this.svg);
+    this.gE=mk('g',{},this.svg);const gN=mk('g',{},this.svg);this.gM=mk('g',{},this.svg);
+    this.nodes=this.pos.map((p,i)=>{
+      const g=mk('g',{class:'node'},gN);
+      const b=mk('g',{class:'bump'},g);
+      if(OPMAP[this.op].root&&i===this.root){mk('circle',{class:'rr',cx:p.x,cy:p.y,r:40},b);}
+      mk('circle',{class:'nc',cx:p.x,cy:p.y,r:31},b);
+      mk('text',{class:'nt',x:p.x,y:p.y-(OPMAP[this.op].root&&i===this.root?5:0)},b).textContent='P'+i;
+      if(OPMAP[this.op].root&&i===this.root) mk('text',{class:'rl',x:p.x,y:p.y+13},b).textContent='root';
+      const lab=mk('g',{class:'lab'},g);const rect=mk('rect',{rx:14,height:28},lab);const tx=mk('text',{},lab);
+      return{g,rect,tx,p};
+    });
+  }
+  render(pulse){
+    const s=this.states[this.cur];
+    this.nodes.forEach((n,i)=>{
+      const txt=fmt(s.v[i]);n.tx.textContent=txt;
+      const w=Math.max(46,txt.length*8.2+24),{p}=n;
+      const lx=p.x,ly=p.y+this.off;
+      n.rect.setAttribute('x',lx-w/2);n.rect.setAttribute('y',ly-14);n.rect.setAttribute('width',w);
+      n.tx.setAttribute('x',lx);n.tx.setAttribute('y',ly+1);
+      n.g.classList.toggle('dim',!!s.dim[i]);n.g.classList.remove('act');
+      if(pulse&&pulse.has(i)){n.g.classList.remove('pulse');void n.g.getBBox;requestAnimationFrame(()=>n.g.classList.add('pulse'))}
+    });
+  }
+  emit(){this.onUpdate(this)}
+  animate(ph,t){
+    const {W,H}=this,cx=W/2,cy=H/2;
+    const items=ph.msgs.map(m=>{
+      const a=this.pos[m.f],b=this.pos[m.t];
+      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,c={x:mx+(cx-mx)*.38,y:my+(cy-my)*.38};
+      mk('path',{class:'edge',d:`M${a.x},${a.y} Q${c.x},${c.y} ${b.x},${b.y}`},this.gE);
+      const g=mk('g',{class:'msg'},this.gM);const w=Math.max(30,m.l.length*7.4+18);
+      mk('rect',{x:-w/2,y:-13,width:w,height:26,rx:13},g);mk('text',{x:0,y:1},g).textContent=m.l;
+      this.nodes[m.f].g.classList.add('act');this.nodes[m.t].g.classList.add('act');
+      return{a,b,c,g};
+    });
+    return new Promise(res=>{
+      const dur=1050/this.speed,st=performance.now();
+      const fr=now=>{
+        if(t!==this.tok){res(false);return}
+        const k=Math.min(1,(now-st)/dur),e=ease(k),u=1-e;
+        items.forEach(it=>{const x=u*u*it.a.x+2*u*e*it.c.x+e*e*it.b.x,y=u*u*it.a.y+2*u*e*it.c.y+e*e*it.b.y;it.g.setAttribute('transform',`translate(${x},${y}) scale(${.6+.4*Math.sin(Math.PI*Math.min(1,k*1.4))})`)});
+        if(k<1)requestAnimationFrame(fr);else{this.gM.innerHTML='';this.gE.innerHTML='';res(true)}
+      };
+      requestAnimationFrame(fr);
+    });
+  }
+  async fwd(){
+    if(this.busy||this.cur>=this.phases.length)return false;
+    this.busy=true;const t=this.tok,ph=this.phases[this.cur];this.emit();
+    this.pending=this.animate(ph,t);const ok=await this.pending;if(!ok||t!==this.tok)return false;
+    this.cur++;this.busy=false;this.render(new Set(ph.msgs.map(m=>m.t)));this.emit();return true;
+  }
+  back(){if(this.busy)return;if(this.cur>0){this.cur--;this.render();this.emit()}}
+  async play(){
+    if(this.playing){this.playing=false;this.emit();return}
+    if(this.cur>=this.phases.length){this.cur=0;this.render()}
+    this.playing=true;this.emit();const t=this.tok;
+    while(this.playing&&t===this.tok&&this.cur<this.phases.length){if(this.busy){await this.pending;await sleep(30);continue}const ok=await this.fwd();if(!ok)break;if(this.cur<this.phases.length)await sleep(280/this.speed)}
+    if(t===this.tok){this.playing=false;this.emit()}
+  }
+  reset(){this.cancel();this.cur=0;this.render();this.emit()}
+  cancel(){this.tok++;this.playing=false;this.busy=false;if(this.gM)this.gM.innerHTML='';if(this.gE)this.gE.innerHTML='';if(this.nodes)this.nodes.forEach(n=>n.g.classList.remove('act'))}
+}
+
+/* ---------- simulator UI ---------- */
+let simOp=store.get('simOp','bcast'),simNp=store.get('simNp',4),simRoot=0;
+if(!OPMAP[simOp])simOp='bcast';
+const sim=new Sim($('#simSvg'),{onUpdate:updSimUI});
+function rangeFill(el){const p=(el.value-el.min)/(el.max-el.min)*100;el.style.setProperty('--p',p+'%')}
+function buildOps(){
+  $('#ops').innerHTML=OPS.map(o=>`<button data-op="${o.id}" class="${o.id===simOp?'on':''}">${o.name}</button>`).join('');
+}
+function buildRoots(){
+  const r=$('#roots');r.classList.toggle('off',!OPMAP[simOp].root);
+  r.innerHTML=[...Array(simNp)].map((_,i)=>`<button data-root="${i}" class="${i===simRoot?'on':''}">${i}</button>`).join('');
+}
+function loadSim(){
+  if(simRoot>=simNp)simRoot=0;
+  buildRoots();sim.load(simOp,simNp,simRoot);
+  const o=OPMAP[simOp];$('#simDesc').textContent=L(o.d);$('#simCode').innerHTML=codeBlock(o.code(simNp,simRoot),'c',o.name);
+  store.set('simOp',simOp);store.set('simNp',simNp);
+}
+function updSimUI(s){
+  const n=s.phases.length;
+  $('#stepTxt').textContent=`${T('step')} ${s.cur} / ${n}`;
+  $('#stepSub').textContent=s.busy?T('s_run'):s.cur===0?T('s_init'):s.cur===n?T('s_done'):T('s_run');
+  $('#simBar').style.width=(n?s.cur/n*100:0)+'%';
+  $('#icPlay').style.display=s.playing?'none':'';$('#icPause').style.display=s.playing?'':'none';
+  $('#bBack').disabled=s.cur===0||s.busy;$('#bFwd').disabled=s.cur>=n;
+  const log=$('#simLog');let h='';
+  for(let i=0;i<s.cur;i++){h+=`<li class="h">${T('step')} ${i+1}</li>`+s.phases[i].msgs.map(m=>`<li><span>P${m.f} → P${m.t}</span><span>${esc(m.l)}</span></li>`).join('')}
+  log.innerHTML=h||`<li class="empty">${T('log_empty')}</li>`;log.scrollTop=log.scrollHeight;
+}
+$('#ops').addEventListener('click',e=>{const b=e.target.closest('[data-op]');if(!b)return;simOp=b.dataset.op;$$('#ops button').forEach(x=>x.classList.toggle('on',x===b));loadSim()});
+$('#roots').addEventListener('click',e=>{const b=e.target.closest('[data-root]');if(!b)return;simRoot=+b.dataset.root;loadSim()});
+$('#np').addEventListener('input',e=>{simNp=+e.target.value;$('#npVal').textContent=simNp;rangeFill(e.target);loadSim()});
+$('#speed').addEventListener('input',e=>{sim.speed=+e.target.value;$('#spVal').textContent=(+e.target.value).toFixed(1)+'×';rangeFill(e.target)});
+$('#bPlay').onclick=()=>sim.play();$('#bFwd').onclick=()=>{sim.playing=false;sim.fwd()};$('#bBack').onclick=()=>{sim.playing=false;sim.back()};$('#bReset').onclick=()=>sim.reset();
+document.addEventListener('keydown',e=>{
+  if(current!=='simulator'||/INPUT|TEXTAREA/.test(document.activeElement.tagName)&&document.activeElement.type!=='range')return;
+  if(e.code==='Space'){e.preventDefault();sim.play()}else if(e.key==='ArrowRight'){e.preventDefault();sim.playing=false;sim.fwd()}else if(e.key==='ArrowLeft'){e.preventDefault();sim.playing=false;sim.back()}else if(e.key==='r'||e.key==='R'){sim.reset()}
+});
+function openSim(op){simOp=op;buildOps();loadSim();location.hash='simulator'}
+
+/* ---------- hero sim ---------- */
+const hero=new Sim($('#heroSvg'),{W:900,H:440,R:140,off:54,speed:.9,onUpdate:s=>{$('#heroStep').textContent=String(s.cur).padStart(2,'0')+' / '+String(s.phases.length).padStart(2,'0')}});
+(async function heroLoop(){
+  const seq=['allgather','bcast','reduce','scatter','gather','allreduce'];let i=0;
+  while(true){
+    if(current!=='home'||document.hidden){await sleep(600);continue}
+    const op=seq[i++%seq.length];hero.load(op,6,0);$('#heroOp').textContent=OPMAP[op].name;
+    await sleep(700);await hero.play();await sleep(1500);
+  }
+})();
+let wi=0;setInterval(()=>{if(current!=='home')return;wi=(wi+1)%4;setWord()},2600);
+function setWord(){const ws=$$('#words div');ws.forEach((w,i)=>w.classList.toggle('on',i===wi));const w=ws[wi];$('#wdot').style.transform=`translateY(${w.offsetTop+w.offsetHeight/2-13}px)`}
+
+/* ---------- progress ---------- */
+let READ=store.get('read',[]),DONE=store.get('done',[]),BEST=store.get('best',null);
+function renderHome(){
+  $('#stats').innerHTML=[[MODS.length,'st_mod'],[QUIZ.length,'st_q'],[TASKS.length,'st_t'],[OPS.length,'st_op']].map(([n,k])=>`<div class="stat glass lift"><b>${n}</b><span>${T(k)}</span></div>`).join('');
+  const F=[['theory','book','f_th','f_th_d'],['simulator','net','f_sim','f_sim_d',1],['tests','quiz','f_q','f_q_d'],['tasks','code','f_t','f_t_d']];
+  $('#feats').innerHTML=F.map(([h,ic,t,d,star])=>`<a class="feat glass lift${star?' star':''}" href="#${h}"><div class="ic">${ICON[ic]}</div>${star?`<span class="tag">${T('f_new')}</span>`:''}<h3>${T(t)}</h3><p>${T(d)}</p><span class="go">${T('f_open')}${ICON.arr}</span></a>`).join('');
+  const C=2*Math.PI*34;
+  const ring=(v,max,label,txt)=>`<div class="ring"><svg viewBox="0 0 84 84"><circle class="tr" cx="42" cy="42" r="34"/><circle class="fg" cx="42" cy="42" r="34" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-off="${C*(1-(max?v/max:0))}"/></svg><div><b>${txt}</b><span>${label}</span></div></div>`;
+  $('#prog').innerHTML=`<div><div class="eyebrow">${T('pr_title')}</div><p class="sub" style="margin-top:10px;font-size:15px">${T('pr_sub')}</p></div><div class="rings">${ring(READ.length,MODS.length,T('pr_mod'),READ.length+' / '+MODS.length)}${ring(BEST||0,100,T('pr_q'),BEST==null?'—':BEST+'%')}${ring(DONE.length,TASKS.length,T('pr_t'),DONE.length+' / '+TASKS.length)}</div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>$$('#prog .fg').forEach(c=>c.style.strokeDashoffset=c.dataset.off)));
+}
+
+/* ---------- theory ---------- */
+let curMod=Math.min(store.get('mod',0),MODS.length-1);
+function renderTheory(){
+  $('#mods').innerHTML=MODS.map((m,i)=>`<button data-mod="${i}" class="${i===curMod?'on':''}"><span class="n">${String(i+1).padStart(2,'0')}</span><span class="t">${L(m.title)}</span><span class="ck ${READ.includes(i)?'done':''}">${ICON.check}</span></button>`).join('');
+  const m=MODS[curMod];let h=`<div class="eyebrow">${T('mod')} ${String(curMod+1).padStart(2,'0')} / ${String(MODS.length).padStart(2,'0')}</div><h2>${L(m.title)}</h2><p class="lead">${L(m.lead)}</p>`;
+  m.blocks.forEach(b=>{
+    if(b.p)h+=`<p>${esc(L(b.p)).replace(/\b(MPI_[A-Za-z_0-9]+)/g,'<code>$1</code>')}</p>`;
+    else if(b.h)h+=`<h4>${L(b.h)}</h4>`;
+    else if(b.code)h+=codeBlock(b.code,b.lang,b.file);
+    else if(b.table)h+=`<table class="tbl"><thead><tr>${b.table.head.map(c=>`<th>${L(c)}</th>`).join('')}</tr></thead><tbody>${b.table.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(L(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    else if(b.pts)h+=`<ul class="pts">${b.pts.map(x=>`<li>${esc(L(x))}</li>`).join('')}</ul>`;
+    else if(b.sims)h+=`<div class="simlink"><span>${T('open_sim')}</span>${b.sims.map(o=>`<button class="pill" data-sim="${o}">${OPMAP[o].name}</button>`).join('')}</div>`;
+    else if(b.widget==='amdahl')h+=`<div class="amd" id="amd"><div class="row"><div><label>${T('amd_f')}<b id="afv"></b></label><input type="range" id="af" min="0" max="50" value="${store.get('af',10)}"></div><div><label>${T('amd_p')}<b id="apv"></b></label><input type="range" id="ap" min="0" max="10" value="${store.get('ap',5)}"></div></div><div class="out"><div><b id="aS"></b><span>${T('amd_s')}</span></div><div><b id="aE"></b><span>${T('amd_e')}</span></div><div><b id="aL"></b><span>${T('amd_l')}</span></div></div><svg id="aSvg" viewBox="0 0 600 220"></svg></div>`;
+  });
+  const isRead=READ.includes(curMod);
+  h+=`<div class="art-foot"><button class="btn sec sm mark ${isRead?'done':''}" id="markBtn">${isRead?ICON.check+T('marked'):T('mark')}</button><div class="nav2">${curMod>0?`<button class="btn sec sm" data-go="${curMod-1}">${ICON.back}${T('prev')}</button>`:''}${curMod<MODS.length-1?`<button class="btn pri sm" data-go="${curMod+1}">${T('next')}${ICON.arr}</button>`:''}</div></div>`;
+  $('#art').innerHTML=h;
+  if($('#amd'))initAmdahl();
+}
+$('#mods').addEventListener('click',e=>{const b=e.target.closest('[data-mod]');if(b)gotoMod(+b.dataset.mod)});
+$('#art').addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');if(g)return gotoMod(+g.dataset.go);
+  const s=e.target.closest('[data-sim]');if(s)return openSim(s.dataset.sim);
+  if(e.target.closest('#markBtn')){READ=READ.includes(curMod)?READ.filter(x=>x!==curMod):[...READ,curMod];store.set('read',READ);renderTheory()}
+});
+function gotoMod(i){curMod=i;store.set('mod',i);const a=$('#art');a.style.animation='none';void a.offsetWidth;a.style.animation='viewIn .7s var(--smooth)';renderTheory();window.scrollTo({top:0,behavior:'smooth'})}
+function initAmdahl(){
+  const f=$('#af'),p=$('#ap');
+  const upd=()=>{
+    const fv=f.value/100,pe=+p.value,pv=2**pe;rangeFill(f);rangeFill(p);store.set('af',+f.value);store.set('ap',pe);
+    const S=x=>1/(fv+(1-fv)/x),s=S(pv),num=x=>x.toLocaleString(LANG==='ru'?'ru-RU':'kk-KZ',{maximumFractionDigits:2});
+    $('#afv').textContent=f.value+'%';$('#apv').textContent=pv;$('#aS').textContent=num(s)+'×';$('#aE').textContent=Math.round(s/pv*100)+'%';$('#aL').textContent=fv>0?num(1/fv)+'×':T('amd_inf');
+    const W=600,H=220,pl=40,pb=28,pt=12,pr=12,ymax=Math.max(2,S(1024))*1.08;
+    const X=e=>pl+(W-pl-pr)*e/10,Y=v=>H-pb-(H-pb-pt)*(v-1)/(ymax-1);
+    let d='';for(let e=0;e<=10;e+=.1)d+=(e?'L':'M')+X(e).toFixed(1)+','+Y(S(2**e)).toFixed(1);
+    const css=getComputedStyle(document.documentElement),ink=css.getPropertyValue('--ink'),mut=css.getPropertyValue('--muted'),ln=css.getPropertyValue('--line2');
+    let g=`<line x1="${pl}" y1="${H-pb}" x2="${W-pr}" y2="${H-pb}" stroke="${ln}"/><line x1="${pl}" y1="${pt}" x2="${pl}" y2="${H-pb}" stroke="${ln}"/>`;
+    [0,2,4,6,8,10].forEach(e=>g+=`<text x="${X(e)}" y="${H-8}" font-size="11" fill="${mut}" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace">${2**e}</text>`);
+    [1,ymax/2,ymax/1.08].forEach(v=>g+=`<text x="${pl-8}" y="${Y(v)+4}" font-size="11" fill="${mut}" text-anchor="end" font-family="JetBrains Mono, ui-monospace, monospace">${Math.round(v)}</text>`);
+    if(fv>0&&1/fv<=ymax)g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(1/fv)}" y2="${Y(1/fv)}" stroke="${mut}" stroke-dasharray="4 5"/>`;
+    g+=`<path d="${d}" fill="none" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${X(pe)}" cy="${Y(s)}" r="7" fill="${ink}"/><circle cx="${X(pe)}" cy="${Y(s)}" r="13" fill="${ink}" opacity=".12"/>`;
+    $('#aSvg').innerHTML=g;
+  };
+  f.oninput=upd;p.oninput=upd;upd();
+}
+
+/* ---------- quiz ---------- */
+const Q={state:'start',filter:store.get('qf',-1),pool:[],i:0,ans:[],picked:null,checked:false};
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function renderQuiz(){
+  const el=$('#quiz');let h='';
+  if(Q.state==='start'){
+    const n=QUIZ.filter(q=>Q.filter<0||q.m===Q.filter).length;
+    h=`<div class="sec-head"><div class="eyebrow">${T('q_eyebrow')}</div><h2 class="h2">${T('q_title')}</h2><p class="sub">${T('q_sub')}</p></div><div class="qcard glass"><div class="chips" style="margin-top:0"><button data-qf="-1" class="${Q.filter<0?'on':''}">${T('q_all')}</button>${MODS.map((m,i)=>QUIZ.some(q=>q.m===i)?`<button data-qf="${i}" class="${Q.filter===i?'on':''}">${L(m.title)}</button>`:'').join('')}</div><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px"><div><b style="font-family:'Inter Tight',Inter,sans-serif;font-size:40px;letter-spacing:-.04em">${n}</b> <span style="color:var(--muted)">${T('q_count')}</span>${BEST!=null?`<div style="color:var(--muted);font-size:14px;margin-top:4px">${T('q_best')}: ${BEST}%</div>`:''}</div><button class="btn pri" id="qStart">${T('q_start')}${ICON.arr}</button></div></div>`;
+  }else if(Q.state==='q'){
+    const q=Q.pool[Q.i],n=Q.pool.length;
+    h=`<div class="qcard glass"><div class="qtop"><span>${T('q_q')} <b>${Q.i+1} / ${n}</b></span><span>${L(MODS[q.m].title)}</span></div><div class="liq"><i style="width:${(Q.i+(Q.checked?1:0))/n*100}%"></i></div><div class="qq">${L(q.q)}</div><div class="opts ${Q.checked?'locked':''}">${q.o.map((o,j)=>{let c='';if(Q.checked){c=j===q.a?'ok':j===Q.picked?'bad':'mute'}else if(j===Q.picked)c='sel';return`<button class="opt ${c}" data-opt="${j}"><span class="k">${'ABCD'[j]}</span><span>${L(o)}</span></button>`}).join('')}</div>${Q.checked?`<div class="expl"><b>${Q.picked===q.a?T('q_ok'):T('q_bad')}</b>${esc(L(q.e))}</div>`:''}<div class="qact">${Q.checked?`<button class="btn pri" id="qNext">${Q.i<n-1?T('q_next'):T('q_finish')}${ICON.arr}</button>`:`<button class="btn pri" id="qCheck" ${Q.picked==null?'disabled style="opacity:.4;pointer-events:none"':''}>${T('q_check')}</button>`}</div></div>`;
+  }else{
+    const n=Q.pool.length,ok=Q.ans.filter((a,i)=>a===Q.pool[i].a).length,pct=Math.round(ok/n*100);
+    const wrong=Q.pool.map((q,i)=>({q,a:Q.ans[i]})).filter(x=>x.a!==x.q.a);
+    h=`<div class="qcard glass res"><div class="eyebrow">${T('q_res')}</div><div class="big" style="margin:14px 0 6px">${ok}<small> / ${n}</small></div><div class="liq" style="max-width:360px;margin:18px auto 18px"><i style="width:${pct}%"></i></div><p class="sub" style="margin:0 auto">${pct>=90?T('q_r1'):pct>=60?T('q_r2'):T('q_r3')}</p><div style="display:flex;gap:10px;justify-content:center;margin-top:26px;flex-wrap:wrap"><button class="btn pri" id="qAgain">${T('q_again')}</button><a class="btn sec" href="#theory">${T('q_toth')}</a></div>${wrong.length?`<div class="rev"><div class="eyebrow" style="background:none;padding:0;margin-top:10px">${T('q_rev')}</div>${wrong.map(x=>`<div class="w"><b>${L(x.q.q)}</b>${T('q_ans')} ${L(x.q.o[x.q.a])}</div>`).join('')}</div>`:''}</div>`;
+  }
+  el.innerHTML=h;
+}
+$('#quiz').addEventListener('click',e=>{
+  const f=e.target.closest('[data-qf]');if(f){Q.filter=+f.dataset.qf;store.set('qf',Q.filter);return renderQuiz()}
+  if(e.target.closest('#qStart')||e.target.closest('#qAgain')){Q.pool=shuffle(QUIZ.filter(q=>Q.filter<0||q.m===Q.filter));Q.i=0;Q.ans=[];Q.picked=null;Q.checked=false;Q.state='q';return renderQuiz()}
+  const o=e.target.closest('[data-opt]');if(o&&!Q.checked){Q.picked=+o.dataset.opt;return renderQuiz()}
+  if(e.target.closest('#qCheck')&&Q.picked!=null){Q.checked=true;Q.ans[Q.i]=Q.picked;return renderQuiz()}
+  if(e.target.closest('#qNext')){
+    if(Q.i<Q.pool.length-1){Q.i++;Q.picked=null;Q.checked=false}
+    else{Q.state='done';const ok=Q.ans.filter((a,i)=>a===Q.pool[i].a).length,pct=Math.round(ok/Q.pool.length*100);if(Q.filter<0&&(BEST==null||pct>BEST)){BEST=pct;store.set('best',pct)}}
+    renderQuiz();window.scrollTo({top:0,behavior:'smooth'});
+  }
+});
+
+/* ---------- tasks ---------- */
+let tFilter=-1;const tOpen=new Set(),tHint=new Set(),tSol=new Set();
+function renderTasks(){
+  $('#tfil').innerHTML=`<button data-tf="-1" class="${tFilter<0?'on':''}">${T('tk_all')}</button>`+GROUPS.map((g,i)=>`<button data-tf="${i}" class="${tFilter===i?'on':''}">${L(g)}</button>`).join('');
+  $('#tlist').innerHTML=TASKS.map((t,i)=>tFilter>=0&&t.g!==tFilter?'':`<div class="task glass ${tOpen.has(i)?'open':''} ${DONE.includes(i)?'done':''}" data-t="${i}"><button class="hd" data-tog="${i}"><span class="num">${String(i+1).padStart(2,'0')}</span><span class="tt"><b>${L(t.t)}</b><span>${L(GROUPS[t.g])}</span></span><span class="lvl">${[1,2,3].map(k=>`<i class="${k<=t.l?'f':''}"></i>`).join('')}</span><span class="dn">${ICON.check}</span>${ICON.chev}</button><div class="acc"><div><div class="tb2"><p>${esc(L(t.d)).replace(/\b(MPI_[A-Za-z_0-9]+)/g,'<code class="inl">$1</code>')}</p><div class="row"><button class="btn sec sm" data-hint="${i}">${T('tk_hint')}</button><button class="btn sec sm" data-sol="${i}">${T('tk_sol')}</button>${t.sim?`<button class="pill" data-sim="${t.sim}">${OPMAP[t.sim].name}</button>`:''}<button class="btn sm ${DONE.includes(i)?'sec mark done':'pri'}" data-done="${i}" style="margin-left:auto">${DONE.includes(i)?ICON.check+T('tk_done'):T('tk_mark')}</button></div>${tHint.has(i)?`<div class="hint">${esc(L(t.h))}</div>`:''}${tSol.has(i)?codeBlock(t.c,'c','solution.c'):''}</div></div></div></div>`).join('');
+}
+$('#tfil').addEventListener('click',e=>{const b=e.target.closest('[data-tf]');if(b){tFilter=+b.dataset.tf;renderTasks()}});
+$('#tlist').addEventListener('click',e=>{
+  let b;
+  if((b=e.target.closest('[data-tog]'))){const i=+b.dataset.tog;const card=b.closest('.task');tOpen.has(i)?tOpen.delete(i):tOpen.add(i);card.classList.toggle('open');return}
+  if((b=e.target.closest('[data-hint]'))){const i=+b.dataset.hint;tHint.has(i)?tHint.delete(i):tHint.add(i);return renderTasks()}
+  if((b=e.target.closest('[data-sol]'))){const i=+b.dataset.sol;tSol.has(i)?tSol.delete(i):tSol.add(i);return renderTasks()}
+  if((b=e.target.closest('[data-done]'))){const i=+b.dataset.done;DONE=DONE.includes(i)?DONE.filter(x=>x!==i):[...DONE,i];store.set('done',DONE);return renderTasks()}
+  if((b=e.target.closest('[data-sim]')))openSim(b.dataset.sim);
+});
+
+/* ---------- install ---------- */
+let instTab=0;
+function renderInstall(){
+  const t=INSTALL[instTab];
+  $('#inst').innerHTML=`<div class="seg" id="instSeg"><span class="thumb"></span>${INSTALL.map((x,i)=>`<button data-it="${i}" class="${i===instTab?'on':''}">${x.n}</button>`).join('')}</div><div id="instBody" style="animation:viewIn .6s var(--smooth)">${t.b.map(b=>b.p?`<p>${esc(L(b.p))}</p>`:codeBlock(b.code,b.lang,b.file)).join('')}</div>`;
+  placeThumb($('#instSeg'));
+}
+$('#inst').addEventListener('click',e=>{const b=e.target.closest('[data-it]');if(b){instTab=+b.dataset.it;renderInstall()}});
+
+/* ---------- segmented thumbs, nav indicator ---------- */
+function placeThumb(seg){const on=seg.querySelector('button.on'),th=seg.querySelector('.thumb');if(!on||!th)return;th.style.left=on.offsetLeft+'px';th.style.width=on.offsetWidth+'px'}
+function moveInd(a){const ind=$('#ind');if(!a){ind.style.opacity=0;return}ind.style.opacity=1;ind.style.left=a.offsetLeft+'px';ind.style.width=a.offsetWidth+'px'}
+const links=$('#links');
+links.addEventListener('pointerover',e=>{const a=e.target.closest('a');if(a)moveInd(a)});
+links.addEventListener('pointerleave',()=>moveInd($('#links a.on')));
+
+/* ---------- i18n ---------- */
+function applyStatic(){
+  document.documentElement.lang=LANG==='ru'?'ru':'kk';
+  $$('[data-i18n]').forEach(e=>e.textContent=T(e.dataset.i18n));
+  $$('[data-i18n-html]').forEach(e=>e.innerHTML=T(e.dataset.i18nHtml));
+  $$('#langSeg button').forEach(b=>b.classList.toggle('on',b.dataset.lang===LANG));
+}
+function renderAll(){
+  applyStatic();renderHome();renderTheory();renderQuiz();renderTasks();renderInstall();
+  const o=OPMAP[simOp];$('#simDesc').textContent=L(o.d);$('#simCode').innerHTML=codeBlock(o.code(simNp,simRoot),'c',o.name);
+  sim.render();sim.emit();hero.render&&hero.states&&hero.render();
+  requestAnimationFrame(()=>{placeThumb($('#langSeg'));moveInd($('#links a.on'));setWord()});
+}
+$('#langSeg').addEventListener('click',e=>{
+  const b=e.target.closest('[data-lang]');if(!b||b.dataset.lang===LANG)return;
+  LANG=b.dataset.lang;store.set('lang',LANG);
+  $$('#langSeg button').forEach(x=>x.classList.toggle('on',x===b));placeThumb($('#langSeg'));
+  document.body.classList.add('swap');
+  setTimeout(()=>{renderAll();document.body.classList.remove('swap')},220);
+});
+
+/* ---------- theme ---------- */
+const sysDark=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;
+document.documentElement.dataset.theme=store.get('theme',sysDark?'dark':'light');
+$('#themeBtn').addEventListener('click',e=>{
+  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  const apply=()=>{document.documentElement.dataset.theme=next;store.set('theme',next);if($('#amd'))initAmdahl()};
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!document.startViewTransition||reduce){apply();return}
+  const x=e.clientX,y=e.clientY,r=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
+  const vt=document.startViewTransition(apply);
+  vt.ready.then(()=>document.documentElement.animate({clipPath:[`circle(0px at ${x}px ${y}px)`,`circle(${r}px at ${x}px ${y}px)`]},{duration:750,easing:'cubic-bezier(.7,0,.2,1)',pseudoElement:'::view-transition-new(root)'})).catch(()=>{});
+});
+
+/* ---------- pointer effects ---------- */
+let raf=0;
+document.addEventListener('pointermove',e=>{
+  const t=e.target.closest&&e.target.closest('.glass.lift,.btn');
+  if(t){const r=t.getBoundingClientRect();t.style.setProperty('--sx',(e.clientX-r.left)+'px');t.style.setProperty('--sy',(e.clientY-r.top)+'px')}
+  if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const bg=$('#bg');bg.style.setProperty('--mx',(e.clientX/innerWidth-.5).toFixed(3));bg.style.setProperty('--my',(e.clientY/innerHeight-.5).toFixed(3))});
+},{passive:true});
+
+/* ---------- router ---------- */
+const VIEWS=['home','theory','simulator','tests','tasks','install'];
+function route(){
+  let v=location.hash.slice(1);if(!VIEWS.includes(v))v='home';
+  if(v===current)return;
+  if(current==='simulator')sim.cancel(),sim.render(),sim.emit();
+  current=v;
+  $$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  $$('#links a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  moveInd($('#links a.on'));
+  const la=$('#links a.on');if(la&&links.scrollWidth>links.clientWidth)links.scrollTo({left:la.offsetLeft-40,behavior:'smooth'});
+  $('#pg').textContent=String(VIEWS.indexOf(v)+1).padStart(2,'0')+' / '+String(VIEWS.length).padStart(2,'0');
+  if(v==='home'){renderHome();requestAnimationFrame(setWord)}
+  if(v==='tests'&&Q.state==='done'){}
+  window.scrollTo({top:0});
+}
+window.addEventListener('hashchange',route);
+window.addEventListener('resize',()=>{placeThumb($('#langSeg'));moveInd($('#links a.on'));if($('#instSeg'))placeThumb($('#instSeg'));setWord()});
+
+/* ---------- init ---------- */
+buildOps();$('#np').value=simNp;$('#npVal').textContent=simNp;rangeFill($('#np'));rangeFill($('#speed'));
+loadSim();
+applyStatic();renderTheory();renderQuiz();renderTasks();renderInstall();
+route();renderHome();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{placeThumb($('#langSeg'));moveInd($('#links a.on'));setWord()});
+setTimeout(()=>{placeThumb($('#langSeg'));moveInd($('#links a.on'));setWord()},300);
+</script>
+</body>
+</html>
